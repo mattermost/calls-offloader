@@ -18,6 +18,7 @@ type Client struct {
 	cfg        *ClientConfig
 	httpClient *http.Client
 	dialFn     DialContextFn
+	authToken  string
 }
 
 type ClientConfig struct {
@@ -184,6 +185,49 @@ func (c *Client) Unregister(clientID string) error {
 		}
 		return fmt.Errorf("request failed with status %s", resp.Status)
 	}
+
+	return nil
+}
+
+func (c *Client) Login(clientID string, authKey string) error {
+	if c.httpClient == nil {
+		return fmt.Errorf("http client is not initialized")
+	}
+
+	reqData := map[string]string{
+		"clientID": clientID,
+		"authKey":  authKey,
+	}
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(reqData); err != nil {
+		return fmt.Errorf("failed to encode body: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", c.cfg.httpURL+"/login", &buf)
+	if err != nil {
+		return fmt.Errorf("failed to build request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("http request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respData := map[string]string{}
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+		return fmt.Errorf("decoding http response failed: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if errMsg := respData["error"]; errMsg != "" {
+			return fmt.Errorf("request failed: %s", errMsg)
+		}
+		return fmt.Errorf("request failed with status %s", resp.Status)
+	}
+
+	c.authToken = respData["bearerToken"]
 
 	return nil
 }

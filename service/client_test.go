@@ -198,3 +198,46 @@ func TestClientUnregister(t *testing.T) {
 		require.Equal(t, "request failed: authentication failed: unauthorized", err.Error())
 	})
 }
+
+func TestClientLogin(t *testing.T) {
+	th := SetupTestHelper(t, nil)
+	defer th.Teardown()
+
+	c, err := NewClient(ClientConfig{
+		URL:     th.apiURL,
+		AuthKey: th.srvc.cfg.API.Security.AdminSecretKey,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	t.Run("success", func(t *testing.T) {
+		authKey, err := random.NewSecureString(auth.MinKeyLen)
+		require.NoError(t, err)
+		err = c.Register("clientA", authKey)
+		require.NoError(t, err)
+		require.NotEmpty(t, authKey)
+
+		err = c.Login("clientA", authKey)
+		require.NoError(t, err)
+		require.NotEmpty(t, c.authToken)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		err := c.Login("clientC", "authKey")
+		require.Error(t, err)
+		require.Equal(t, "request failed: login failed: authentication failed: error: not found", err.Error())
+	})
+
+	t.Run("auth failed", func(t *testing.T) {
+		authKey, err := random.NewSecureString(auth.MinKeyLen)
+		require.NoError(t, err)
+		err = c.Register("clientB", authKey)
+		require.NoError(t, err)
+		require.NotEmpty(t, authKey)
+
+		err = c.Login("clientB", authKey+"bad")
+		require.Error(t, err)
+		require.Equal(t, "request failed: login failed: authentication failed", err.Error())
+	})
+}
