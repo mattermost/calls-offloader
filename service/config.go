@@ -6,9 +6,9 @@ package service
 import (
 	"fmt"
 
-	"github.com/mattermost/rtcd/logger"
-	"github.com/mattermost/rtcd/service/api"
-	"github.com/mattermost/rtcd/service/auth"
+	"github.com/mattermost/calls-offloader/logger"
+	"github.com/mattermost/calls-offloader/service/api"
+	"github.com/mattermost/calls-offloader/service/auth"
 )
 
 type SecurityConfig struct {
@@ -61,9 +61,34 @@ func (c StoreConfig) IsValid() error {
 	return nil
 }
 
+type JobAPIType string
+
+const (
+	JobAPITypeDocker     = "docker"
+	JobAPITypeKubernetes = "kubernetes"
+)
+
+type JobsConfig struct {
+	APIType           JobAPIType `toml:"api_type"`
+	MaxConcurrentJobs int        `toml:"max_concurrent_jobs"`
+}
+
+func (c JobsConfig) IsValid() error {
+	if c.APIType != JobAPITypeDocker {
+		return fmt.Errorf("invalid APIType value: %s", c.APIType)
+	}
+
+	if c.MaxConcurrentJobs <= 0 {
+		return fmt.Errorf("invalid MaxConcurrentJobs value: should be greater than zero")
+	}
+
+	return nil
+}
+
 type Config struct {
 	API    APIConfig
 	Store  StoreConfig
+	Jobs   JobsConfig
 	Logger logger.Config
 }
 
@@ -73,6 +98,10 @@ func (c Config) IsValid() error {
 	}
 
 	if err := c.Store.IsValid(); err != nil {
+		return err
+	}
+
+	if err := c.Jobs.IsValid(); err != nil {
 		return err
 	}
 
@@ -87,6 +116,8 @@ func (c *Config) SetDefaults() {
 	c.API.HTTP.ListenAddress = ":4545"
 	c.API.Security.SessionCache.ExpirationMinutes = 1440
 	c.Store.DataSource = "/tmp/calls-offloader-db"
+	c.Jobs.APIType = JobAPITypeDocker
+	c.Jobs.MaxConcurrentJobs = 2
 	c.Logger.EnableConsole = true
 	c.Logger.ConsoleJSON = false
 	c.Logger.ConsoleLevel = "INFO"

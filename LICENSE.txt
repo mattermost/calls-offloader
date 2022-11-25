@@ -2,7 +2,7 @@ Mattermost Licensing
 
 SOFTWARE LICENSING
 
-You are licensed to use compiled versions of rtcd produced by Mattermost, Inc. under an MIT LICENSE
+You are licensed to use compiled versions of calls-offloader produced by Mattermost, Inc. under an MIT LICENSE
 
 -	See MIT-COMPILED-LICENSE.md included in compiled versions for details
 
@@ -15,9 +15,9 @@ You are licensed to use the source code in Admin Tools and Configuration Files
 (config/, scripts/ and all subdirectories thereof) under the Apache License v2.0.
 
 We promise that we will not enforce the copyleft provisions in AGPL v3.0 against you if your application (a) does not
-link to rtcd directly, but exclusively uses rtcd's Admin Tools and Configuration Files, and
-(b) you have not modified, added to or adapted the source code of rtcd in a way that results in the creation of
-a “modified version” or “work based on” rtcd as these terms are defined in the AGPL v3.0 license.
+link to calls-offloader directly, but exclusively uses calls-offloader's Admin Tools and Configuration Files, and
+(b) you have not modified, added to or adapted the source code of calls-offloader in a way that results in the creation of
+a “modified version” or “work based on” calls-offloader as these terms are defined in the AGPL v3.0 license.
 
 MATTERMOST TRADEMARK GUIDELINES
 

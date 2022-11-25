@@ -8,8 +8,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/mattermost/rtcd/service/auth"
-	"github.com/mattermost/rtcd/service/random"
+	"github.com/mattermost/calls-offloader/service/auth"
+	"github.com/mattermost/calls-offloader/service/random"
 
 	"github.com/stretchr/testify/require"
 )
