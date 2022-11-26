@@ -57,15 +57,20 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 	}
 	defer cli.Close()
 
-	cnts, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	// We fetch the list of running containers to check against it in order to
+	// ensure we don't exceed the configured MaxConcurrentJobs limit.
+	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		return Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	if len(cnts) >= s.cfg.MaxConcurrentJobs {
+	if len(containers) >= s.cfg.MaxConcurrentJobs {
 		return Job{}, fmt.Errorf("max concurrent jobs reached")
 	}
 
+	// We check whether the runner (docker image) exists already. If not we try
+	// and pull it from the public registry. This outer check is especially useful
+	// when running things locally where there's no registry.
 	if _, _, err := cli.ImageInspectWithRaw(ctx, job.Runner); err != nil {
 		out, err := cli.ImagePull(ctx, job.Runner, types.ImagePullOptions{})
 		if err != nil {
@@ -115,6 +120,9 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 
 	job.StartAt = time.Now().UnixMilli()
 
+	// We wait for the container to exit to cover both the case of unexpected error or
+	// the execution reaching the configured MaxDurationSec. The provided callback is used
+	// to update the caller about this occurrence.
 	go func() {
 		timeout := dockerRequestTimeout
 		if cfg.MaxDurationSec > 0 {
