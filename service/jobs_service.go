@@ -83,12 +83,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 	var jobData RecordingJobInputData
 	jobData.FromMap(cfg.InputData)
 
-	env := []string{
-		fmt.Sprintf("SITE_URL=%s", jobData.SiteURL),
-		fmt.Sprintf("CALL_ID=%s", jobData.CallID),
-		fmt.Sprintf("THREAD_ID=%s", jobData.ThreadID),
-		fmt.Sprintf("AUTH_TOKEN=%s", jobData.AuthToken),
-	}
+	env := jobData.ToEnv()
 	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
 		env = append(env, "DEV_MODE=true")
 	}
@@ -112,7 +107,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 		return Job{}, fmt.Errorf("failed to create container: %w", err)
 	}
 
-	job.ID = resp.ID
+	job.ID = resp.ID[:12]
 
 	if err := cli.ContainerStart(ctx, job.ID, types.ContainerStartOptions{}); err != nil {
 		return Job{}, fmt.Errorf("failed to start container: %w", err)

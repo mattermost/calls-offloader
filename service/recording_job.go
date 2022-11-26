@@ -50,3 +50,12 @@ func (c *RecordingJobInputData) FromMap(m map[string]any) *RecordingJobInputData
 	c.AuthToken, _ = m["auth_token"].(string)
 	return c
 }
+
+func (c *RecordingJobInputData) ToEnv() []string {
+	return []string{
+		fmt.Sprintf("SITE_URL=%s", c.SiteURL),
+		fmt.Sprintf("CALL_ID=%s", c.CallID),
+		fmt.Sprintf("THREAD_ID=%s", c.ThreadID),
+		fmt.Sprintf("AUTH_TOKEN=%s", c.AuthToken),
+	}
+}

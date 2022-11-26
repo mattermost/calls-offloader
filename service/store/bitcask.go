@@ -20,7 +20,7 @@ func newBitcaskStore(path string) (*bitcaskStore, error) {
 	db, err := bitcask.Open(path,
 		bitcask.WithDirFileModeBeforeUmask(0700),
 		bitcask.WithFileFileModeBeforeUmask(0600),
-		bitcask.WithMaxKeySize(128))
+	)
 	if err != nil {
 		return nil, err
 	}
