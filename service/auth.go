@@ -17,10 +17,7 @@ const bearerPrefix = "Bearer "
 
 func (s *Service) authHandler(w http.ResponseWriter, r *http.Request) (clientID string, code int, err error) {
 	defer func() {
-		data := &httpData{
-			reqData: map[string]string{},
-			resData: map[string]string{},
-		}
+		data := newHTTPData()
 
 		data.code = code
 		if err != nil {
@@ -90,10 +87,7 @@ func (s *Service) registerClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := &httpData{
-		reqData: map[string]string{},
-		resData: map[string]string{},
-	}
+	data := newHTTPData()
 	defer s.httpAudit("registerClient", data, w, r)
 
 	if !s.cfg.API.Security.AllowSelfRegistration {
@@ -131,10 +125,7 @@ func (s *Service) unregisterClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := &httpData{
-		reqData: map[string]string{},
-		resData: map[string]string{},
-	}
+	data := newHTTPData()
 	defer s.httpAudit("unregisterClient", data, w, r)
 
 	// If an admin client is not enabled, and self registration is not allowed,
@@ -192,10 +183,7 @@ func (s *Service) loginClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := &httpData{
-		reqData: map[string]string{},
-		resData: map[string]string{},
-	}
+	data := newHTTPData()
 	defer s.httpAudit("loginClient", data, w, r)
 
 	if err := json.NewDecoder(r.Body).Decode(&data.reqData); err != nil {

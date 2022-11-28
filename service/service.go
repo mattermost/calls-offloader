@@ -7,13 +7,17 @@ import (
 	"fmt"
 	"net/http/pprof"
 
-	"github.com/mattermost/rtcd/logger"
-	"github.com/mattermost/rtcd/service/api"
-	"github.com/mattermost/rtcd/service/auth"
-	"github.com/mattermost/rtcd/service/store"
+	"github.com/mattermost/calls-offloader/logger"
+	"github.com/mattermost/calls-offloader/service/api"
+	"github.com/mattermost/calls-offloader/service/auth"
+	"github.com/mattermost/calls-offloader/service/store"
 
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
+
+	"github.com/gorilla/mux"
 )
+
+const apiRequestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 type Service struct {
 	cfg          Config
@@ -21,6 +25,7 @@ type Service struct {
 	store        store.Store
 	auth         *auth.Service
 	log          *mlog.Logger
+	jobService   *JobService
 	sessionCache *auth.SessionCache
 }
 
@@ -63,16 +68,29 @@ func New(cfg Config) (*Service, error) {
 		return nil, fmt.Errorf("failed to create api server: %w", err)
 	}
 
-	s.apiServer.RegisterHandleFunc("/version", s.getVersion)
-	s.apiServer.RegisterHandleFunc("/login", s.loginClient)
-	s.apiServer.RegisterHandleFunc("/register", s.registerClient)
-	s.apiServer.RegisterHandleFunc("/unregister", s.unregisterClient)
+	s.jobService, err = NewJobService(cfg.Jobs, s.log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create job service: %w", err)
+	}
+	s.log.Info("initiated job service")
 
-	s.apiServer.RegisterHandler("/debug/pprof/heap", pprof.Handler("heap"))
-	s.apiServer.RegisterHandler("/debug/pprof/goroutine", pprof.Handler("goroutine"))
-	s.apiServer.RegisterHandler("/debug/pprof/mutex", pprof.Handler("mutex"))
-	s.apiServer.RegisterHandleFunc("/debug/pprof/profile", pprof.Profile)
-	s.apiServer.RegisterHandleFunc("/debug/pprof/trace", pprof.Trace)
+	router := mux.NewRouter()
+	router.HandleFunc("/version", s.getVersion)
+	router.HandleFunc("/login", s.loginClient)
+	router.HandleFunc("/register", s.registerClient)
+	router.HandleFunc("/unregister", s.unregisterClient)
+	router.HandleFunc("/jobs", s.handleCreateJob).Methods("POST")
+	router.HandleFunc("/jobs/{id:[a-z0-9]+}/stop", s.handleStopJob).Methods("POST")
+	router.HandleFunc("/jobs/{id:[a-z0-9]+}/logs", s.handleJobGetLogs).Methods("GET")
+	router.HandleFunc("/jobs/{id:[a-z0-9]+}", s.handleGetJob).Methods("GET")
+
+	router.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	router.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	router.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
+	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	router.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	s.apiServer.RegisterHandler("/", router)
 
 	return s, nil
 }

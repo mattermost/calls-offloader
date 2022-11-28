@@ -12,10 +12,18 @@ import (
 )
 
 type httpData struct {
-	err     string
-	code    int
-	reqData map[string]string
-	resData map[string]string
+	err      string
+	code     int
+	clientID string
+	reqData  map[string]string
+	resData  map[string]any
+}
+
+func newHTTPData() *httpData {
+	return &httpData{
+		reqData: map[string]string{},
+		resData: map[string]any{},
+	}
 }
 
 func (s *Service) httpAudit(handler string, data *httpData, w http.ResponseWriter, r *http.Request) {
@@ -27,11 +35,15 @@ func (s *Service) httpAudit(handler string, data *httpData, w http.ResponseWrite
 		data.resData["error"] = data.err
 		fields = append(fields, mlog.Err(fmt.Errorf("%s", data.err)))
 	}
-	if clientID := data.reqData["clientID"]; clientID != "" {
-		fields = append(fields, mlog.String("clientID", clientID))
+
+	clientID := data.clientID
+	if cID := data.reqData["clientID"]; cID != "" {
+		clientID = cID
 	}
+	fields = append(fields, mlog.String("clientID", clientID))
+
 	s.log.Debug(handler, append(fields, mlog.String("status", status))...)
-	if w != nil {
+	if w != nil && len(data.resData) > 0 {
 		data.resData["code"] = fmt.Sprintf("%d", data.code)
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(data.code)

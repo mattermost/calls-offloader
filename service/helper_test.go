@@ -4,9 +4,9 @@
 package service
 
 import (
-	"github.com/mattermost/rtcd/logger"
-	"github.com/mattermost/rtcd/service/api"
-	"github.com/mattermost/rtcd/service/auth"
+	"github.com/mattermost/calls-offloader/logger"
+	"github.com/mattermost/calls-offloader/service/api"
+	"github.com/mattermost/calls-offloader/service/auth"
 	"net"
 	"os"
 	"testing"
@@ -80,6 +80,10 @@ func MakeDefaultCfg(tb testing.TB) *Config {
 		},
 		Store: StoreConfig{
 			DataSource: dbDir,
+		},
+		Jobs: JobsConfig{
+			APIType:           JobAPITypeDocker,
+			MaxConcurrentJobs: 2,
 		},
 		Logger: logger.Config{
 			EnableConsole: true,
