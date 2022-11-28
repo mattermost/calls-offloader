@@ -20,7 +20,8 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
-const dockerRequestTimeout = 5 * time.Second
+const dockerRequestTimeout = 10 * time.Second
+const dockerImagePullTimeout = 2 * time.Minute
 
 var dockerStopTimeout = 5 * time.Minute
 
@@ -72,20 +73,32 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 	// and pull it from the public registry. This outer check is especially useful
 	// when running things locally where there's no registry.
 	if _, _, err := cli.ImageInspectWithRaw(ctx, job.Runner); err != nil {
-		out, err := cli.ImagePull(ctx, job.Runner, types.ImagePullOptions{})
+		// cancelling existing context as pulling the image may take a while.
+		cancel()
+
+		imagePullCtx, cancel := context.WithTimeout(context.Background(), dockerImagePullTimeout)
+		defer cancel()
+		s.log.Debug("image is missing, will try to pull it from registry")
+		out, err := cli.ImagePull(imagePullCtx, job.Runner, types.ImagePullOptions{})
 		if err != nil {
 			return Job{}, fmt.Errorf("failed to pull docker image: %w", err)
 		}
 		defer out.Close()
 		_, _ = io.Copy(io.Discard, out)
+
+		// recreating the context as before to proceed.
+		ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
+		defer cancel()
 	}
 
 	var jobData RecordingJobInputData
 	jobData.FromMap(cfg.InputData)
 
+	var networkMode container.NetworkMode
 	env := jobData.ToEnv()
 	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
 		env = append(env, "DEV_MODE=true")
+		networkMode = "host"
 	}
 
 	// TODO: review volume naming and cleanup.
@@ -95,6 +108,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 		Env:     env,
 		Volumes: map[string]struct{}{"calls-recorder-volume:/recs": {}},
 	}, &container.HostConfig{
+		NetworkMode: networkMode,
 		Mounts: []mount.Mount{
 			{
 				Target: "/recs",
@@ -149,7 +163,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 }
 
 func (s *JobService) StopRecordingJobDocker(jobID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
 	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	if err != nil {
