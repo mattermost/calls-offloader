@@ -126,7 +126,7 @@ build: go-build-docker ## to build
 release: build github-release ## to build and release artifacts
 
 .PHONY: lint
-lint: go-lint docker-lint ## to lint
+lint: go-lint ## to lint
 
 .PHONY: test
 test: go-test ## to test
