@@ -43,4 +43,3 @@ file_level = "DEBUG"
 file_location = "calls-offloader.log"
 # A boolean controlling whether to display colors when logging to the console.
 enable_color = true
-
