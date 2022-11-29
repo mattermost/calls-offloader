@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/mattermost/calls-offloader/service/random"
 	"io"
 	"os"
 	"time"
@@ -41,9 +42,13 @@ func NewJobService(cfg JobsConfig, log *mlog.Logger) (*JobService, error) {
 	}, nil
 }
 
-func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job Job) error) (Job, error) {
+func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(jobID string) error) (Job, error) {
 	if onStopCb == nil {
 		return Job{}, fmt.Errorf("onStopCb should not be nil")
+	}
+
+	if mockJob := os.Getenv("MOCK_RECORDING_JOB"); mockJob == "true" {
+		return s.CreateMockRecordingJob(cfg, onStopCb)
 	}
 
 	job := Job{
@@ -154,7 +159,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 			}
 		}
 
-		if err := onStopCb(job); err != nil {
+		if err := onStopCb(job.ID); err != nil {
 			s.log.Error("failed to run onStopCb", mlog.Err(err), mlog.String("jobID", job.ID))
 		}
 	}()
@@ -162,7 +167,32 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 	return job, nil
 }
 
+var mockOnStopCb map[string]func(string) error
+
+func (s *JobService) CreateMockRecordingJob(cfg JobConfig, onStopCb func(jobID string) error) (Job, error) {
+	id := random.NewID()
+
+	if mockOnStopCb == nil {
+		mockOnStopCb = make(map[string]func(string) error)
+	}
+	mockOnStopCb[id] = onStopCb
+
+	return Job{
+		JobConfig: cfg,
+		ID:        id[:12],
+		StartAt:   time.Now().UnixMilli(),
+	}, nil
+}
+
 func (s *JobService) StopRecordingJobDocker(jobID string) error {
+	if mockJob := os.Getenv("MOCK_RECORDING_JOB"); mockJob == "true" {
+		if onCloseCb, ok := mockOnStopCb[jobID]; ok {
+			_ = onCloseCb(jobID)
+			delete(mockOnStopCb, jobID)
+		}
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
 	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())

@@ -44,8 +44,8 @@ func (s *Service) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job, err := s.jobService.CreateRecordingJobDocker(cfg, func(job Job) error {
-		job, err := s.GetJob(job.ID)
+	job, err := s.jobService.CreateRecordingJobDocker(cfg, func(jobID string) error {
+		job, err := s.GetJob(jobID)
 		if err != nil {
 			return err
 		}
