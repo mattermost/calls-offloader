@@ -26,6 +26,12 @@ security.session_cache.expiration_minutes = 1440
 # A path to a directory the service will use to store persistent data such as registered client IDs and hashed credentials.
 data_source = "/tmp/calls-offloader-db"
 
+[jobs]
+# The underlying API used to create and manage jobs. At the moment, "docker" is allowed.
+api_type = "docker"
+# Maximum number of jobs allowed to be running at one time.
+max_concurrent_jobs = 2
+
 [logger]
 # A boolean controlling whether to log to the console.
 enable_console = true
