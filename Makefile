@@ -131,6 +131,12 @@ lint: go-lint ## to lint
 .PHONY: test
 test: go-test ## to test
 
+.PHONY: docker-login
+docker-login: ## to login to a container registry
+	@$(INFO) Dockerd login to container registry ${DOCKER_REGISTRY}...
+	$(AT) echo "${DOCKER_PASSWORD}" | $(DOCKER) login --password-stdin -u ${DOCKER_USER} $(DOCKER_REGISTRY) || ${FAIL}
+	@$(OK) Dockerd login to container registry ${DOCKER_REGISTRY}...
+
 go-build: $(GO_BUILD_PLATFORMS_ARTIFACTS) ## to build binaries
 
 .PHONY: go-build
