@@ -8,7 +8,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
@@ -95,11 +97,22 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 	jobData.FromMap(cfg.InputData)
 
 	var networkMode container.NetworkMode
-	env := jobData.ToEnv()
+	var env []string
 	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
 		env = append(env, "DEV_MODE=true")
-		networkMode = "host"
+		job.Runner = "calls-recorder:master"
+		if runtime.GOOS == "linux" {
+			networkMode = "host"
+		}
+		if runtime.GOOS == "darwin" {
+			u, err := url.Parse(jobData.SiteURL)
+			if err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
+				u.Host = "host.docker.internal" + ":" + u.Port()
+				jobData.SiteURL = u.String()
+			}
+		}
 	}
+	env = append(env, jobData.ToEnv()...)
 
 	// TODO: review volume naming and cleanup.
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
