@@ -29,7 +29,7 @@ func loadConfig(path string) (service.Config, error) {
 	} else if _, err := toml.DecodeFile(path, &cfg); err != nil {
 		return cfg, fmt.Errorf("failed to decode config file: %w", err)
 	}
-	if err := envconfig.Process("calls-offloader", &cfg); err != nil {
+	if err := envconfig.Process("", &cfg); err != nil {
 		return cfg, err
 	}
 	return cfg, nil
