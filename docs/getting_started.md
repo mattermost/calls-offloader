@@ -102,7 +102,7 @@ Configuration for the service is fully documented in-place through the [`config.
 
 ## Running with Mattermost Calls
 
-The last step is to configure the Calls side to use the service. This is done via the **Admin Console -> Plugins -> Calls -> Job service URL** setting, which in this example will be set to `http://localhost:4545`.
+The last step is to configure the calls side to use the service. This is done via the **System Console > Plugins > Calls > Job service URL** setting, which in this example will be set to `http://localhost:4545`.
 
 > **_Note:_**
 > 1. The client will self-register the first time it connects to the service and store the authentication key in the database. If no client ID is explicitly provided, the diagnostic ID of the Mattermost installation will be used.
