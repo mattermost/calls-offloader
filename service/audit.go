@@ -60,7 +60,7 @@ func reqAuditFields(req *http.Request) []mlog.Field {
 		mlog.String("remoteAddr", req.RemoteAddr),
 		mlog.String("method", req.Method),
 		mlog.String("url", req.URL.String()),
-		mlog.Any("header", req.Header),
+		mlog.Any("header", hdr),
 		mlog.String("host", req.Host),
 	}
 	return fields
