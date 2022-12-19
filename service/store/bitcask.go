@@ -31,6 +31,8 @@ func newBitcaskStore(path string) (*bitcaskStore, error) {
 }
 
 func (s *bitcaskStore) Set(key, value string) error {
+	s.mut.Lock()
+	defer s.mut.Unlock()
 	if key == "" {
 		return ErrEmptyKey
 	}
@@ -71,6 +73,8 @@ func (s *bitcaskStore) Put(key, value string) error {
 }
 
 func (s *bitcaskStore) Get(key string) (string, error) {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
 	if key == "" {
 		return "", ErrEmptyKey
 	}
@@ -84,6 +88,8 @@ func (s *bitcaskStore) Get(key string) (string, error) {
 }
 
 func (s *bitcaskStore) Delete(key string) error {
+	s.mut.Lock()
+	defer s.mut.Unlock()
 	if key == "" {
 		return ErrEmptyKey
 	}
@@ -101,6 +107,8 @@ func (s *bitcaskStore) Delete(key string) error {
 }
 
 func (s *bitcaskStore) Close() error {
+	s.mut.Lock()
+	defer s.mut.Unlock()
 	err := s.db.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close store: %w", err)
