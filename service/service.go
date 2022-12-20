@@ -84,6 +84,7 @@ func New(cfg Config) (*Service, error) {
 	router.HandleFunc("/jobs/{id:[a-z0-9]+}/logs", s.handleJobGetLogs).Methods("GET")
 	router.HandleFunc("/jobs/{id:[a-z0-9]+}", s.handleGetJob).Methods("GET")
 	router.HandleFunc("/jobs/{id:[a-z0-9]+}", s.handleDeleteJob).Methods("DELETE")
+	router.HandleFunc("/jobs/update-runner", s.handleUpdateJobRunner).Methods("POST")
 
 	router.Handle("/debug/pprof/heap", pprof.Handler("heap"))
 	router.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))

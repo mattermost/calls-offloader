@@ -46,6 +46,36 @@ func NewJobService(cfg JobsConfig, log *mlog.Logger) (*JobService, error) {
 	}, nil
 }
 
+func (s *JobService) UpdateJobRunnerDocker(runner string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client: %w", err)
+	}
+	defer cli.Close()
+
+	// We check whether the runner (docker image) exists already. If not we try
+	// and pull it from the public registry. This outer check is especially useful
+	// when running things locally where there's no registry.
+	if _, _, err := cli.ImageInspectWithRaw(ctx, runner); err != nil {
+		// cancelling existing context as pulling the image may take a while.
+		cancel()
+
+		imagePullCtx, cancel := context.WithTimeout(context.Background(), dockerImagePullTimeout)
+		defer cancel()
+		s.log.Debug("image is missing, will try to pull it from registry")
+		out, err := cli.ImagePull(imagePullCtx, runner, types.ImagePullOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to pull docker image: %w", err)
+		}
+		defer out.Close()
+		_, _ = io.Copy(io.Discard, out)
+	}
+
+	return nil
+}
+
 func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (Job, error) {
 	if onStopCb == nil {
 		return Job{}, fmt.Errorf("onStopCb should not be nil")
@@ -74,26 +104,8 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 		return Job{}, fmt.Errorf("max concurrent jobs reached")
 	}
 
-	// We check whether the runner (docker image) exists already. If not we try
-	// and pull it from the public registry. This outer check is especially useful
-	// when running things locally where there's no registry.
-	if _, _, err := cli.ImageInspectWithRaw(ctx, job.Runner); err != nil {
-		// cancelling existing context as pulling the image may take a while.
-		cancel()
-
-		imagePullCtx, cancel := context.WithTimeout(context.Background(), dockerImagePullTimeout)
-		defer cancel()
-		s.log.Debug("image is missing, will try to pull it from registry")
-		out, err := cli.ImagePull(imagePullCtx, job.Runner, types.ImagePullOptions{})
-		if err != nil {
-			return Job{}, fmt.Errorf("failed to pull docker image: %w", err)
-		}
-		defer out.Close()
-		_, _ = io.Copy(io.Discard, out)
-
-		// recreating the context as before to proceed.
-		ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
-		defer cancel()
+	if err := s.UpdateJobRunnerDocker(job.Runner); err != nil {
+		return Job{}, fmt.Errorf("failed to update job runner: %w", err)
 	}
 
 	var jobData RecordingJobInputData
