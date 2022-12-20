@@ -24,8 +24,11 @@ import (
 
 const dockerRequestTimeout = 10 * time.Second
 const dockerImagePullTimeout = 2 * time.Minute
+const dockerGracefulExitCode = 143
 
 var dockerStopTimeout = 5 * time.Minute
+
+type stopCb func(job Job, exitCode int) error
 
 type JobService struct {
 	log *mlog.Logger
@@ -43,7 +46,7 @@ func NewJobService(cfg JobsConfig, log *mlog.Logger) (*JobService, error) {
 	}, nil
 }
 
-func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job Job) error) (Job, error) {
+func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (Job, error) {
 	if onStopCb == nil {
 		return Job{}, fmt.Errorf("onStopCb should not be nil")
 	}
@@ -156,18 +159,35 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb func(job J
 
 		waitCh, errCh := cli.ContainerWait(ctx, job.ID, container.WaitConditionNotRunning)
 
+		var exitCode int
 		select {
-		case <-waitCh:
-			s.log.Debug("container exited", mlog.String("jobID", job.ID))
+		case res := <-waitCh:
+			exitCode = int(res.StatusCode)
+			s.log.Debug("container exited", mlog.String("jobID", job.ID), mlog.Int("exitCode", exitCode))
 		case err := <-errCh:
 			s.log.Warn("timeout reached, stopping job", mlog.Err(err), mlog.String("jobID", job.ID))
 			if err := s.StopRecordingJobDocker(job.ID); err != nil {
 				s.log.Error("failed to stop job", mlog.Err(err), mlog.String("jobID", job.ID))
 				return
 			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+			defer cancel()
+			cnt, err := cli.ContainerInspect(ctx, job.ID)
+			if err != nil {
+				s.log.Error("failed to inspect container", mlog.Err(err), mlog.String("jobID", job.ID))
+				return
+			}
+
+			if cnt.State == nil {
+				s.log.Error("container state is missing", mlog.String("jobID", job.ID))
+				return
+			}
+
+			exitCode = cnt.State.ExitCode
 		}
 
-		if err := onStopCb(job); err != nil {
+		if err := onStopCb(job, exitCode); err != nil {
 			s.log.Error("failed to run onStopCb", mlog.Err(err), mlog.String("jobID", job.ID))
 		}
 	}()
@@ -217,4 +237,20 @@ func (s *JobService) RecordingJobLogsDocker(jobID string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func (s *JobService) RemoveRecordingJobDocker(jobID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client: %w", err)
+	}
+	defer cli.Close()
+
+	if err := cli.ContainerRemove(ctx, jobID, types.ContainerRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed to remove container: %s", err.Error())
+	}
+
+	return nil
 }
