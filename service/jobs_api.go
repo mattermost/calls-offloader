@@ -242,3 +242,44 @@ func (s *Service) handleDeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	data.code = http.StatusOK
 }
+
+func (s *Service) handleUpdateJobRunner(w http.ResponseWriter, r *http.Request) {
+	data := newHTTPData()
+	defer s.httpAudit("handleUpdateJobRunner", data, w, r)
+
+	clientID, code, err := s.authHandler(w, r)
+	if err != nil {
+		data.err = err.Error()
+		data.code = code
+		return
+	}
+	data.clientID = clientID
+
+	var info map[string]interface{}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, apiRequestBodyMaxSizeBytes)).Decode(&info); err != nil {
+		data.err = "failed to decode request body: " + err.Error()
+		data.code = http.StatusBadRequest
+		return
+	}
+
+	runner, ok := info["runner"].(string)
+	if !ok || runner == "" {
+		data.err = "invalid request body"
+		data.code = http.StatusBadRequest
+		return
+	}
+
+	if err := s.jobService.UpdateJobRunnerDocker(runner); err != nil {
+		data.err = "failed to update job runner: " + err.Error()
+		data.code = http.StatusInternalServerError
+		return
+	}
+
+	if err != nil {
+		data.err = "failed to create recording job: " + err.Error()
+		data.code = http.StatusInternalServerError
+		return
+	}
+
+	data.code = http.StatusOK
+}
