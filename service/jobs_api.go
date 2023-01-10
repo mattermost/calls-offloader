@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -269,7 +268,7 @@ func (s *Service) handleUpdateJobRunner(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !strings.HasPrefix(runner, recorderRunnerPrefix) {
+	if !JobRunnerIsValid(runner) {
 		data.err = "invalid job runner"
 		data.code = http.StatusBadRequest
 		return
