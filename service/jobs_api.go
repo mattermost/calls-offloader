@@ -173,7 +173,6 @@ func (s *Service) handleJobGetLogs(w http.ResponseWriter, r *http.Request) {
 
 	clientID, code, err := s.authHandler(w, r)
 	if err != nil {
-		s.log.Debug("dang")
 		data.err = err.Error()
 		data.code = code
 		return
@@ -265,6 +264,12 @@ func (s *Service) handleUpdateJobRunner(w http.ResponseWriter, r *http.Request) 
 	runner, ok := info["runner"].(string)
 	if !ok || runner == "" {
 		data.err = "invalid request body"
+		data.code = http.StatusBadRequest
+		return
+	}
+
+	if !JobRunnerIsValid(runner) {
+		data.err = "invalid job runner"
 		data.code = http.StatusBadRequest
 		return
 	}
