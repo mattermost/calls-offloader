@@ -268,8 +268,8 @@ func (s *Service) handleUpdateJobRunner(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !JobRunnerIsValid(runner) {
-		data.err = "invalid job runner"
+	if err := JobRunnerIsValid(runner); err != nil {
+		data.err = "invalid job runner: " + err.Error()
 		data.code = http.StatusBadRequest
 		return
 	}

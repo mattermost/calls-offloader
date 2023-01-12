@@ -11,14 +11,15 @@ import (
 type JobType string
 
 const (
-	JobTypeRecording JobType = "recording"
+	JobTypeRecording            JobType = "recording"
+	minSupportedRecorderVersion         = "0.2.2"
 )
 
 // We currently support two formats, semantic version tag or image hash (sha256).
 // TODO: Consider deprecating tag version and switch to hash only.
 var recorderRunnerREs = []*regexp.Regexp{
 	regexp.MustCompile(`^mattermost/calls-recorder@sha256:\w{64}$`),
-	regexp.MustCompile(`^mattermost/calls-recorder:v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`),
+	regexp.MustCompile(`^mattermost/calls-recorder:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$`),
 }
 
 type Job struct {
@@ -36,13 +37,16 @@ type JobConfig struct {
 	InputData      map[string]any `json:"input_data,omitempty"`
 }
 
-func JobRunnerIsValid(runner string) bool {
+func JobRunnerIsValid(runner string) error {
 	for _, re := range recorderRunnerREs {
-		if re.MatchString(runner) {
-			return true
+		if matches := re.FindStringSubmatch(runner); len(matches) > 1 {
+			if err := checkMinVersion(minSupportedRecorderVersion, matches[1]); err != nil {
+				return err
+			}
+			return nil
 		}
 	}
-	return false
+	return fmt.Errorf("failed to validate runner")
 }
 
 func (c JobConfig) IsValid() error {
@@ -56,8 +60,8 @@ func (c JobConfig) IsValid() error {
 
 	switch c.Type {
 	case JobTypeRecording:
-		if !JobRunnerIsValid(c.Runner) {
-			return fmt.Errorf("invalid Runner value: parsing failed")
+		if err := JobRunnerIsValid(c.Runner); err != nil {
+			return fmt.Errorf("invalid Runner value: %w", err)
 		}
 
 		if err := (&RecordingJobInputData{}).FromMap(c.InputData).IsValid(); err != nil {

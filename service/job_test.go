@@ -33,7 +33,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				Type:   JobTypeRecording,
 				Runner: "testrepo/calls-recorder:v0.1.0",
 			},
-			expectedError: "invalid Runner value: parsing failed",
+			expectedError: "invalid Runner value: failed to validate runner",
 		},
 		{
 			name: "invalid runner",
@@ -41,7 +41,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				Type:   JobTypeRecording,
 				Runner: "testrepo/calls-recorder@sha256:abcde",
 			},
-			expectedError: "invalid Runner value: parsing failed",
+			expectedError: "invalid Runner value: failed to validate runner",
 		},
 		{
 			name: "invalid job type",
@@ -55,7 +55,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			name: "invalid max duration",
 			cfg: JobConfig{
 				Type:   JobTypeRecording,
-				Runner: "mattermost/calls-recorder:v0.1.0",
+				Runner: "mattermost/calls-recorder:v0.2.2",
 				InputData: map[string]any{
 					"site_url":   "http://localhost:8065",
 					"call_id":    "8w8jorhr7j83uqr6y1st894hqe",
@@ -67,7 +67,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			expectedError: "invalid MaxDurationSec value: should not be negative",
 		},
 		{
-			name: "valid",
+			name: "invalid version",
 			cfg: JobConfig{
 				Type:   JobTypeRecording,
 				Runner: "mattermost/calls-recorder:v0.1.0",
@@ -77,14 +77,14 @@ func TestJobConfigIsValid(t *testing.T) {
 					"thread_id":  "udzdsg7dwidbzcidx5khrf8nee",
 					"auth_token": "qj75unbsef83ik9p7ueypb6iyw",
 				},
-				MaxDurationSec: 60,
 			},
+			expectedError: "invalid Runner value: actual version (0.1.0) is lower than minimum supported version (0.2.2)",
 		},
 		{
 			name: "valid",
 			cfg: JobConfig{
 				Type:   JobTypeRecording,
-				Runner: "mattermost/calls-recorder@sha256:5192dd075638655265c8e5e0a34631ab32f970a198c3a096f4b4cc115c853931",
+				Runner: "mattermost/calls-recorder:v0.2.2",
 				InputData: map[string]any{
 					"site_url":   "http://localhost:8065",
 					"call_id":    "8w8jorhr7j83uqr6y1st894hqe",
