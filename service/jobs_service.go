@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/mattermost/calls-offloader/service/random"
+
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 
 	"github.com/docker/docker/api/types"
@@ -129,18 +131,18 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 	}
 	env = append(env, jobData.ToEnv()...)
 
-	// TODO: review volume naming and cleanup.
+	volumeID := "calls-recorder-" + random.NewID()
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:   job.Runner,
 		Tty:     false,
 		Env:     env,
-		Volumes: map[string]struct{}{"calls-recorder-volume:/recs": {}},
+		Volumes: map[string]struct{}{volumeID + ":/recs": {}},
 	}, &container.HostConfig{
 		NetworkMode: networkMode,
 		Mounts: []mount.Mount{
 			{
 				Target: "/recs",
-				Source: "calls-recorder-volume",
+				Source: volumeID,
 				Type:   "volume",
 			},
 		},
@@ -260,8 +262,21 @@ func (s *JobService) RemoveRecordingJobDocker(jobID string) error {
 	}
 	defer cli.Close()
 
+	cnt, err := cli.ContainerInspect(ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to get container: %w", err)
+	}
+
 	if err := cli.ContainerRemove(ctx, jobID, types.ContainerRemoveOptions{}); err != nil {
-		return fmt.Errorf("failed to remove container: %s", err.Error())
+		return fmt.Errorf("failed to remove container: %w", err)
+	}
+
+	if len(cnt.Mounts) == 0 {
+		return fmt.Errorf("container should have one volume")
+	}
+
+	if err := cli.VolumeRemove(ctx, cnt.Mounts[0].Name, false); err != nil {
+		return fmt.Errorf("failed to remove volume: %w", err)
 	}
 
 	return nil
