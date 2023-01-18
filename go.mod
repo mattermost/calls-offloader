@@ -5,6 +5,7 @@ go 1.18
 require (
 	git.mills.io/prologic/bitcask v1.0.2
 	github.com/BurntSushi/toml v1.2.1
+	github.com/Masterminds/semver v1.5.0
 	github.com/docker/docker v20.10.9+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
