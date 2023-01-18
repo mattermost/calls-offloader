@@ -146,6 +146,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 				Type:   "volume",
 			},
 		},
+		SecurityOpt: []string{dockerSecurityOpts},
 	}, nil, nil, "")
 	if err != nil {
 		return Job{}, fmt.Errorf("failed to create container: %w", err)
