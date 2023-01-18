@@ -5,7 +5,11 @@ package service
 
 import (
 	"fmt"
+	"net/url"
+	"regexp"
 )
+
+var idRE = regexp.MustCompile(`^[a-z0-9]{26}$`)
 
 type RecordingJobInputData struct {
 	SiteURL   string `json:"site_url"`
@@ -19,16 +23,31 @@ func (c RecordingJobInputData) IsValid() error {
 		return fmt.Errorf("invalid SiteURL value: should not be empty")
 	}
 
+	u, err := url.Parse(c.SiteURL)
+	if err != nil {
+		return fmt.Errorf("SiteURL parsing failed: %w", err)
+	} else if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("SiteURL parsing failed: invalid scheme %q", u.Scheme)
+	} else if u.Path != "" {
+		return fmt.Errorf("SiteURL parsing failed: invalid path %q", u.Path)
+	}
+
 	if c.CallID == "" {
 		return fmt.Errorf("invalid CallID value: should not be empty")
+	} else if !idRE.MatchString(c.CallID) {
+		return fmt.Errorf("CallID parsing failed")
 	}
 
 	if c.ThreadID == "" {
-		return fmt.Errorf("invalid ThreadID be empty")
+		return fmt.Errorf("invalid ThreadID value: should not be empty")
+	} else if !idRE.MatchString(c.ThreadID) {
+		return fmt.Errorf("ThreadID parsing failed")
 	}
 
 	if c.AuthToken == "" {
 		return fmt.Errorf("invalid AuthToken value: should not be empty")
+	} else if !idRE.MatchString(c.AuthToken) {
+		return fmt.Errorf("AuthToken parsing failed")
 	}
 
 	return nil
