@@ -121,6 +121,9 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 		if runtime.GOOS == "linux" {
 			networkMode = "host"
 		}
+		if dockerNetwork := os.Getenv("DOCKER_NETWORK"); dockerNetwork != "" {
+			networkMode = container.NetworkMode(dockerNetwork)
+		}
 		if runtime.GOOS == "darwin" {
 			u, err := url.Parse(jobData.SiteURL)
 			if err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
