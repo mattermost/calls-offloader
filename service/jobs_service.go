@@ -129,6 +129,11 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 			}
 		}
 	}
+
+	if dockerNetwork := os.Getenv("DOCKER_NETWORK"); dockerNetwork != "" {
+		networkMode = container.NetworkMode(dockerNetwork)
+	}
+
 	env = append(env, jobData.ToEnv()...)
 
 	volumeID := "calls-recorder-" + random.NewID()
