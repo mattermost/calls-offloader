@@ -31,7 +31,7 @@ CONFIG_APP_CODE         += ./cmd/offloader
 # Docker executable
 DOCKER                  := $(shell which docker)
 # Docker options to inherit for all docker run commands
-DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "linux/amd64"
+DOCKER_OPTS             += --rm --platform "linux/amd64"
 # Registry to upload images
 DOCKER_REGISTRY         ?= docker.io
 DOCKER_REGISTRY_REPO    ?= mattermost/${APP_NAME}-daily
@@ -180,6 +180,7 @@ go-test: ## to run tests
 	@$(INFO) testing...
 	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
 	-v $(PWD):/app -w /app \
+	-v /var/run/docker.sock:/var/run/docker.sock \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
