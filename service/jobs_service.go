@@ -42,6 +42,20 @@ func NewJobService(cfg JobsConfig, log *mlog.Logger) (*JobService, error) {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
+	switch cfg.APIType {
+	case JobAPITypeDocker:
+		version, err := getServerVersionDocker()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get docker server version: %w", err)
+		}
+		log.Info("connected to docker API",
+			mlog.String("version", version.Version),
+			mlog.String("api_version", version.APIVersion),
+		)
+	default:
+		return nil, fmt.Errorf("%s API is not implemeneted", cfg.APIType)
+	}
+
 	return &JobService{
 		log: log,
 		cfg: cfg,
