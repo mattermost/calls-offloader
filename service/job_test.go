@@ -55,7 +55,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			name: "invalid max duration",
 			cfg: JobConfig{
 				Type:   JobTypeRecording,
-				Runner: "mattermost/calls-recorder:v0.2.2",
+				Runner: "mattermost/calls-recorder:v0.2.4",
 				InputData: map[string]any{
 					"site_url":   "http://localhost:8065",
 					"call_id":    "8w8jorhr7j83uqr6y1st894hqe",
@@ -78,13 +78,13 @@ func TestJobConfigIsValid(t *testing.T) {
 					"auth_token": "qj75unbsef83ik9p7ueypb6iyw",
 				},
 			},
-			expectedError: "invalid Runner value: actual version (0.1.0) is lower than minimum supported version (0.2.2)",
+			expectedError: "invalid Runner value: actual version (0.1.0) is lower than minimum supported version (0.2.4)",
 		},
 		{
 			name: "valid",
 			cfg: JobConfig{
 				Type:   JobTypeRecording,
-				Runner: "mattermost/calls-recorder:v0.2.2",
+				Runner: "mattermost/calls-recorder:v0.2.4",
 				InputData: map[string]any{
 					"site_url":   "http://localhost:8065",
 					"call_id":    "8w8jorhr7j83uqr6y1st894hqe",
