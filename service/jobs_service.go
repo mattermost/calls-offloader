@@ -4,6 +4,7 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -86,7 +87,14 @@ func (s *JobService) UpdateJobRunnerDocker(runner string) error {
 			return fmt.Errorf("failed to pull docker image: %w", err)
 		}
 		defer out.Close()
-		_, _ = io.Copy(io.Discard, out)
+
+		scanner := bufio.NewScanner(out)
+		for scanner.Scan() {
+			s.log.Debug(scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("failed to scan output: %w", err)
+		}
 	}
 
 	return nil
