@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mattermost/calls-offloader/service/random"
+	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 
@@ -132,7 +133,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 		return Job{}, fmt.Errorf("failed to update job runner: %w", err)
 	}
 
-	var jobData RecordingJobInputData
+	var jobData recorder.RecorderConfig
 	jobData.FromMap(cfg.InputData)
 
 	var networkMode container.NetworkMode

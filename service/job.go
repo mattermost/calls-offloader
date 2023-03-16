@@ -6,6 +6,8 @@ package service
 import (
 	"fmt"
 	"regexp"
+
+	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
 type JobType string
@@ -64,7 +66,7 @@ func (c JobConfig) IsValid() error {
 			return fmt.Errorf("invalid Runner value: %w", err)
 		}
 
-		if err := (&RecordingJobInputData{}).FromMap(c.InputData).IsValid(); err != nil {
+		if err := (&recorder.RecorderConfig{}).FromMap(c.InputData).IsValid(); err != nil {
 			return fmt.Errorf("failed to validate InputData: %w", err)
 		}
 	default:

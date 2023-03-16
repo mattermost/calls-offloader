@@ -6,10 +6,19 @@ package service
 import (
 	"testing"
 
+	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestJobConfigIsValid(t *testing.T) {
+	var recorderCfg recorder.RecorderConfig
+	recorderCfg.SetDefaults()
+	recorderCfg.SiteURL = "http://localhost:8065"
+	recorderCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
+	recorderCfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	recorderCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
+
 	tcs := []struct {
 		name          string
 		cfg           JobConfig
@@ -54,14 +63,9 @@ func TestJobConfigIsValid(t *testing.T) {
 		{
 			name: "invalid max duration",
 			cfg: JobConfig{
-				Type:   JobTypeRecording,
-				Runner: "mattermost/calls-recorder:v0.2.4",
-				InputData: map[string]any{
-					"site_url":   "http://localhost:8065",
-					"call_id":    "8w8jorhr7j83uqr6y1st894hqe",
-					"thread_id":  "udzdsg7dwidbzcidx5khrf8nee",
-					"auth_token": "qj75unbsef83ik9p7ueypb6iyw",
-				},
+				Type:           JobTypeRecording,
+				Runner:         "mattermost/calls-recorder:v0.2.4",
+				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: -1,
 			},
 			expectedError: "invalid MaxDurationSec value: should not be negative",
@@ -69,28 +73,18 @@ func TestJobConfigIsValid(t *testing.T) {
 		{
 			name: "invalid version",
 			cfg: JobConfig{
-				Type:   JobTypeRecording,
-				Runner: "mattermost/calls-recorder:v0.1.0",
-				InputData: map[string]any{
-					"site_url":   "http://localhost:8065",
-					"call_id":    "8w8jorhr7j83uqr6y1st894hqe",
-					"thread_id":  "udzdsg7dwidbzcidx5khrf8nee",
-					"auth_token": "qj75unbsef83ik9p7ueypb6iyw",
-				},
+				Type:      JobTypeRecording,
+				Runner:    "mattermost/calls-recorder:v0.1.0",
+				InputData: recorderCfg.ToMap(),
 			},
 			expectedError: "invalid Runner value: actual version (0.1.0) is lower than minimum supported version (0.2.4)",
 		},
 		{
 			name: "valid",
 			cfg: JobConfig{
-				Type:   JobTypeRecording,
-				Runner: "mattermost/calls-recorder:v0.2.4",
-				InputData: map[string]any{
-					"site_url":   "http://localhost:8065",
-					"call_id":    "8w8jorhr7j83uqr6y1st894hqe",
-					"thread_id":  "udzdsg7dwidbzcidx5khrf8nee",
-					"auth_token": "qj75unbsef83ik9p7ueypb6iyw",
-				},
+				Type:           JobTypeRecording,
+				Runner:         "mattermost/calls-recorder:v0.2.4",
+				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
 		},

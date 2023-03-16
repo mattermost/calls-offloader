@@ -9,6 +9,7 @@ require (
 	github.com/docker/docker v20.10.9+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/mattermost/calls-recorder v0.2.5-0.20230316005655-158727c4a88e
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20221122212622-0509e78744bf
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.8.1
@@ -27,6 +28,7 @@ require (
 	github.com/gofrs/flock v0.8.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/mattermost/logr/v2 v2.0.15 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
