@@ -135,6 +135,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 
 	var jobData recorder.RecorderConfig
 	jobData.FromMap(cfg.InputData)
+	jobData.SetDefaults()
 
 	var networkMode container.NetworkMode
 	var env []string
