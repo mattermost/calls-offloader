@@ -14,7 +14,7 @@ type JobType string
 
 const (
 	JobTypeRecording            JobType = "recording"
-	minSupportedRecorderVersion         = "0.2.4"
+	minSupportedRecorderVersion         = "0.3.1"
 )
 
 // We currently support two formats, semantic version tag or image hash (sha256).
