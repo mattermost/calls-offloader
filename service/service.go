@@ -25,7 +25,7 @@ type Service struct {
 	store        store.Store
 	auth         *auth.Service
 	log          *mlog.Logger
-	jobService   *JobService
+	jobService   JobService
 	sessionCache *auth.SessionCache
 }
 

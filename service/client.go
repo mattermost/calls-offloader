@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/mattermost/calls-offloader/service/job"
 )
 
 type Client struct {
@@ -233,45 +235,45 @@ func (c *Client) Login(clientID string, authKey string) error {
 	return nil
 }
 
-func (c *Client) CreateJob(cfg JobConfig) (Job, error) {
+func (c *Client) CreateJob(cfg job.Config) (job.Job, error) {
 	if c.httpClient == nil {
-		return Job{}, fmt.Errorf("http client is not initialized")
+		return job.Job{}, fmt.Errorf("http client is not initialized")
 	}
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(cfg); err != nil {
-		return Job{}, fmt.Errorf("failed to encode body: %w", err)
+		return job.Job{}, fmt.Errorf("failed to encode body: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", c.cfg.httpURL+"/jobs", &buf)
 	if err != nil {
-		return Job{}, fmt.Errorf("failed to build request: %w", err)
+		return job.Job{}, fmt.Errorf("failed to build request: %w", err)
 	}
 	req.SetBasicAuth(c.cfg.ClientID, c.cfg.AuthKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return Job{}, fmt.Errorf("http request failed: %w", err)
+		return job.Job{}, fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respData := map[string]any{}
 		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return Job{}, fmt.Errorf("decoding http response failed: %w", err)
+			return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 		}
 		if errMsg, _ := respData["error"].(string); errMsg != "" {
-			return Job{}, fmt.Errorf("request failed: %s", errMsg)
+			return job.Job{}, fmt.Errorf("request failed: %s", errMsg)
 		}
-		return Job{}, fmt.Errorf("request failed with status %s", resp.Status)
+		return job.Job{}, fmt.Errorf("request failed with status %s", resp.Status)
 	}
 
-	var job Job
-	if err := json.NewDecoder(resp.Body).Decode(&job); err != nil {
-		return Job{}, fmt.Errorf("decoding http response failed: %w", err)
+	var j job.Job
+	if err := json.NewDecoder(resp.Body).Decode(&j); err != nil {
+		return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 	}
 
-	return job, nil
+	return j, nil
 }
 
 func (c *Client) StopJob(jobID string) error {
@@ -305,40 +307,40 @@ func (c *Client) StopJob(jobID string) error {
 	return nil
 }
 
-func (c *Client) GetJob(jobID string) (Job, error) {
+func (c *Client) GetJob(jobID string) (job.Job, error) {
 	if c.httpClient == nil {
-		return Job{}, fmt.Errorf("http client is not initialized")
+		return job.Job{}, fmt.Errorf("http client is not initialized")
 	}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/jobs/%s", c.cfg.httpURL, jobID), nil)
 	if err != nil {
-		return Job{}, fmt.Errorf("failed to build request: %w", err)
+		return job.Job{}, fmt.Errorf("failed to build request: %w", err)
 	}
 	req.SetBasicAuth(c.cfg.ClientID, c.cfg.AuthKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return Job{}, fmt.Errorf("http request failed: %w", err)
+		return job.Job{}, fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respData := map[string]any{}
 		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return Job{}, fmt.Errorf("decoding http response failed: %w", err)
+			return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 		}
 		if errMsg, _ := respData["error"].(string); errMsg != "" {
-			return Job{}, fmt.Errorf("request failed: %s", errMsg)
+			return job.Job{}, fmt.Errorf("request failed: %s", errMsg)
 		}
-		return Job{}, fmt.Errorf("request failed with status %s", resp.Status)
+		return job.Job{}, fmt.Errorf("request failed with status %s", resp.Status)
 	}
 
-	var job Job
-	if err := json.NewDecoder(resp.Body).Decode(&job); err != nil {
-		return Job{}, fmt.Errorf("decoding http response failed: %w", err)
+	var j job.Job
+	if err := json.NewDecoder(resp.Body).Decode(&j); err != nil {
+		return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 	}
 
-	return job, nil
+	return j, nil
 }
 
 func (c *Client) GetJobLogs(jobID string) ([]byte, error) {
