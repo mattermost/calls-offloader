@@ -22,7 +22,7 @@ These are the results of a series of benchmarks that were conducted to verify th
 
 We recommend setting the [`max_concurrent_jobs`](https://github.com/mattermost/calls-offloader/blob/85717457b3e699fd507e8bed4586e82daa19a045/config/config.sample.toml#L33) config option to the values above, based on the quality profile used.
 
-On the Mattermost side it may also be necessary to tune the [`FileSettings.MaxFileSize`](https://docs.mattermost.com/configure/environment-configuration-settings.html#maximum-file-size) setting depending on the profile chosen and the configured [`MaxCallDuration`](https://docs.mattermost.com/configure/plugins-configuration-settings.html#maximum-call-recording-duration).
+On the Mattermost side, it may also be necessary to tune the [`FileSettings.MaxFileSize`](https://docs.mattermost.com/configure/environment-configuration-settings.html#maximum-file-size) setting depending on the profile chosen and the configured [`MaxCallDuration`](https://docs.mattermost.com/configure/plugins-configuration-settings.html#maximum-call-recording-duration).
 
 > **_Note_** 
 > If a load-balancer or proxy is in front of Mattermost, extra configuration may be necessary. 
