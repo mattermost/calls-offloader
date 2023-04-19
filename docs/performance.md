@@ -12,7 +12,7 @@ Recording quality can be configured through the [Calls plugin](https://docs.matt
 
 ### Benchmarks
 
-These are the results of a series of benchmarks that was conducted to verify the scalability capabilities of the service. All tests were executed on a AWS EC2 `c6i.2xlarge` instance which is the recommended instance class and size (`8vCPU / 16GB RAM`) for Calls recordings:
+These are the results of a series of benchmarks that were conducted to verify the scalability capabilities of the service. All tests were executed on a AWS EC2 `c6i.2xlarge` instance which is the recommended instance class and size (`8vCPU / 16GB RAM`) for Calls recordings:
 
 | Profile | Concurrency | CPU (avg) | Memory (avg) | Recording size (avg) |
 |--------:|------------:|----------:|-------------:|---------------------:|
@@ -22,7 +22,7 @@ These are the results of a series of benchmarks that was conducted to verify the
 
 We recommend setting the [`max_concurrent_jobs`](https://github.com/mattermost/calls-offloader/blob/85717457b3e699fd507e8bed4586e82daa19a045/config/config.sample.toml#L33) config option to the values above, based on the quality profile used.
 
-On the Mattermost side it may also be necessary to tune the [`FileSettings.MaxFileSize`](https://docs.mattermost.com/configure/environment-configuration-settings.html#maximum-file-size) setting depending on the profile choosen and the configured [`MaxCallDuration`](https://docs.mattermost.com/configure/plugins-configuration-settings.html#maximum-call-recording-duration).
+On the Mattermost side it may also be necessary to tune the [`FileSettings.MaxFileSize`](https://docs.mattermost.com/configure/environment-configuration-settings.html#maximum-file-size) setting depending on the profile chosen and the configured [`MaxCallDuration`](https://docs.mattermost.com/configure/plugins-configuration-settings.html#maximum-call-recording-duration).
 
 > **_Note_** 
 > If a load-balancer or proxy is in front of Mattermost, extra configuration may be necessary. 
