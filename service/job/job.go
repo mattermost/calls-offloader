@@ -1,7 +1,7 @@
 // Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-package service
+package job
 
 import (
 	"fmt"
@@ -10,12 +10,13 @@ import (
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
-type JobType string
+type Type string
 
 const (
-	JobTypeRecording            JobType = "recording"
-	minSupportedRecorderVersion         = "0.3.1"
+	TypeRecording Type = "recording"
 )
+
+const minSupportedRecorderVersion = "0.3.1"
 
 // We currently support two formats, semantic version tag or image hash (sha256).
 // TODO: Consider deprecating tag version and switch to hash only.
@@ -25,33 +26,32 @@ var recorderRunnerREs = []*regexp.Regexp{
 }
 
 type Job struct {
-	JobConfig
+	Config
 	ID         string         `json:"id"`
 	StartAt    int64          `json:"start_at"`
 	StopAt     int64          `json:"stop_at,omitempty"`
 	OutputData map[string]any `json:"output_data,omitempty"`
 }
 
-type JobConfig struct {
-	Type           JobType        `json:"type"`
+type Config struct {
+	Type           Type           `json:"type"`
 	MaxDurationSec int64          `json:"max_duration_sec"`
 	Runner         string         `json:"runner"`
 	InputData      map[string]any `json:"input_data,omitempty"`
 }
 
-func JobRunnerIsValid(runner string) error {
+type StopCb func(job Job, exitCode int) error
+
+func RunnerIsValid(runner string) error {
 	for _, re := range recorderRunnerREs {
 		if matches := re.FindStringSubmatch(runner); len(matches) > 1 {
-			if err := checkMinVersion(minSupportedRecorderVersion, matches[1]); err != nil {
-				return err
-			}
-			return nil
+			return checkMinVersion(minSupportedRecorderVersion, matches[1])
 		}
 	}
 	return fmt.Errorf("failed to validate runner")
 }
 
-func (c JobConfig) IsValid() error {
+func (c Config) IsValid() error {
 	if c.Type == "" {
 		return fmt.Errorf("invalid Type value: should not be empty")
 	}
@@ -61,8 +61,8 @@ func (c JobConfig) IsValid() error {
 	}
 
 	switch c.Type {
-	case JobTypeRecording:
-		if err := JobRunnerIsValid(c.Runner); err != nil {
+	case TypeRecording:
+		if err := RunnerIsValid(c.Runner); err != nil {
 			return fmt.Errorf("invalid Runner value: %w", err)
 		}
 

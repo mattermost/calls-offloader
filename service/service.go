@@ -25,7 +25,7 @@ type Service struct {
 	store        store.Store
 	auth         *auth.Service
 	log          *mlog.Logger
-	jobService   *JobService
+	jobService   JobService
 	sessionCache *auth.SessionCache
 }
 
@@ -106,6 +106,10 @@ func (s *Service) Start() error {
 
 func (s *Service) Stop() error {
 	s.log.Info("shutting down")
+
+	if err := s.jobService.Shutdown(); err != nil {
+		return fmt.Errorf("failed to shutdown job service: %w", err)
+	}
 
 	if err := s.apiServer.Stop(); err != nil {
 		return fmt.Errorf("failed to stop api server: %w", err)

@@ -1,4 +1,7 @@
-package service
+// Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+package docker
 
 import (
 	"bytes"
