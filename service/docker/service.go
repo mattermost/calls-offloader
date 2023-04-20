@@ -45,14 +45,20 @@ type JobService struct {
 	cfg JobServiceConfig
 	log mlog.LoggerIFace
 
-	// TODO, use common client
-	//client docker.Client
+	client *docker.Client
 }
 
 func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, error) {
-	version, err := getServerVersionDocker()
+	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get docker server version: %w", err)
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+	version, err := client.ServerVersion(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get server version: %w", err)
 	}
 
 	log.Info("connected to docker API",
@@ -61,31 +67,32 @@ func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, err
 	)
 
 	return &JobService{
-		cfg: cfg,
-		log: log,
+		cfg:    cfg,
+		log:    log,
+		client: client,
 	}, nil
+}
+
+func (s *JobService) Shutdown() error {
+	s.log.Info("docker job service shutting down")
+	return s.client.Close()
 }
 
 func (s *JobService) UpdateJobRunner(runner string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
-	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return fmt.Errorf("failed to create docker client: %w", err)
-	}
-	defer cli.Close()
 
 	// We check whether the runner (docker image) exists already. If not we try
 	// and pull it from the public registry. This outer check is especially useful
 	// when running things locally where there's no registry.
-	if _, _, err := cli.ImageInspectWithRaw(ctx, runner); err != nil {
+	if _, _, err := s.client.ImageInspectWithRaw(ctx, runner); err != nil {
 		// cancelling existing context as pulling the image may take a while.
 		cancel()
 
 		imagePullCtx, cancel := context.WithTimeout(context.Background(), dockerImagePullTimeout)
 		defer cancel()
 		s.log.Debug("image is missing, will try to pull it from registry")
-		out, err := cli.ImagePull(imagePullCtx, runner, types.ImagePullOptions{})
+		out, err := s.client.ImagePull(imagePullCtx, runner, types.ImagePullOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to pull docker image: %w", err)
 		}
@@ -108,21 +115,20 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("onStopCb should not be nil")
 	}
 
+	if cfg.Type != job.TypeRecording {
+		return job.Job{}, fmt.Errorf("job type %s is not implemented", cfg.Type)
+	}
+
 	j := job.Job{
 		Config: cfg,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
-	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return job.Job{}, fmt.Errorf("failed to create docker client: %w", err)
-	}
-	defer cli.Close()
 
 	// We fetch the list of running containers to check against it in order to
 	// ensure we don't exceed the configured MaxConcurrentJobs limit.
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	containers, err := s.client.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
@@ -163,7 +169,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	env = append(env, jobData.ToEnv()...)
 
 	volumeID := "calls-recorder-" + random.NewID()
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
+	resp, err := s.client.ContainerCreate(ctx, &container.Config{
 		Image:   j.Runner,
 		Tty:     false,
 		Env:     env,
@@ -185,7 +191,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	j.ID = resp.ID[:12]
 
-	if err := cli.ContainerStart(ctx, j.ID, types.ContainerStartOptions{}); err != nil {
+	if err := s.client.ContainerStart(ctx, j.ID, types.ContainerStartOptions{}); err != nil {
 		return job.Job{}, fmt.Errorf("failed to start container: %w", err)
 	}
 
@@ -203,7 +209,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		waitCh, errCh := cli.ContainerWait(ctx, j.ID, container.WaitConditionNotRunning)
+		waitCh, errCh := s.client.ContainerWait(ctx, j.ID, container.WaitConditionNotRunning)
 
 		var exitCode int
 		select {
@@ -219,7 +225,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 			ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 			defer cancel()
-			cnt, err := cli.ContainerInspect(ctx, j.ID)
+			cnt, err := s.client.ContainerInspect(ctx, j.ID)
 			if err != nil {
 				s.log.Error("failed to inspect container", mlog.Err(err), mlog.String("jobID", j.ID))
 				return
@@ -244,13 +250,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 func (s *JobService) StopJob(jobID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
-	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return fmt.Errorf("failed to create docker client: %w", err)
-	}
-	defer cli.Close()
 
-	if err := cli.ContainerStop(ctx, jobID, &dockerStopTimeout); err != nil {
+	if err := s.client.ContainerStop(ctx, jobID, &dockerStopTimeout); err != nil {
 		return fmt.Errorf("failed to stop container: %s", err.Error())
 	}
 
@@ -260,13 +261,8 @@ func (s *JobService) StopJob(jobID string) error {
 func (s *JobService) GetJobLogs(jobID string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
-	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client: %w", err)
-	}
-	defer cli.Close()
 
-	rdr, err := cli.ContainerLogs(ctx, jobID, types.ContainerLogsOptions{
+	rdr, err := s.client.ContainerLogs(ctx, jobID, types.ContainerLogsOptions{
 		ShowStderr: true,
 		Since:      time.Now().Add(-time.Hour).Format(time.RFC3339),
 	})
@@ -288,18 +284,13 @@ func (s *JobService) GetJobLogs(jobID string) ([]byte, error) {
 func (s *JobService) DeleteJob(jobID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
-	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return fmt.Errorf("failed to create docker client: %w", err)
-	}
-	defer cli.Close()
 
-	cnt, err := cli.ContainerInspect(ctx, jobID)
+	cnt, err := s.client.ContainerInspect(ctx, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get container: %w", err)
 	}
 
-	if err := cli.ContainerRemove(ctx, jobID, types.ContainerRemoveOptions{}); err != nil {
+	if err := s.client.ContainerRemove(ctx, jobID, types.ContainerRemoveOptions{}); err != nil {
 		return fmt.Errorf("failed to remove container: %w", err)
 	}
 
@@ -307,7 +298,7 @@ func (s *JobService) DeleteJob(jobID string) error {
 		return fmt.Errorf("container should have one volume")
 	}
 
-	if err := cli.VolumeRemove(ctx, cnt.Mounts[0].Name, false); err != nil {
+	if err := s.client.VolumeRemove(ctx, cnt.Mounts[0].Name, false); err != nil {
 		return fmt.Errorf("failed to remove volume: %w", err)
 	}
 

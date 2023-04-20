@@ -20,6 +20,7 @@ type JobService interface {
 	StopJob(jobID string) error
 	DeleteJob(jobID string) error
 	GetJobLogs(jobID string) ([]byte, error)
+	Shutdown() error
 }
 
 func NewJobService(cfg JobsConfig, log mlog.LoggerIFace) (JobService, error) {

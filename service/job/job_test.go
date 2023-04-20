@@ -1,12 +1,10 @@
 // Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-package service
+package job
 
 import (
 	"testing"
-
-	"github.com/mattermost/calls-offloader/service/job"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 
@@ -23,40 +21,40 @@ func TestJobConfigIsValid(t *testing.T) {
 
 	tcs := []struct {
 		name          string
-		cfg           job.Config
+		cfg           Config
 		expectedError string
 	}{
 		{
 			name:          "empty config",
-			cfg:           job.Config{},
+			cfg:           Config{},
 			expectedError: "invalid Type value: should not be empty",
 		},
 		{
 			name: "empty runner",
-			cfg: job.Config{
-				Type: job.TypeRecording,
+			cfg: Config{
+				Type: TypeRecording,
 			},
 			expectedError: "invalid Runner value: should not be empty",
 		},
 		{
 			name: "invalid runner",
-			cfg: job.Config{
-				Type:   job.TypeRecording,
+			cfg: Config{
+				Type:   TypeRecording,
 				Runner: "testrepo/calls-recorder:v0.1.0",
 			},
 			expectedError: "invalid Runner value: failed to validate runner",
 		},
 		{
 			name: "invalid runner",
-			cfg: job.Config{
-				Type:   job.TypeRecording,
+			cfg: Config{
+				Type:   TypeRecording,
 				Runner: "testrepo/calls-recorder@sha256:abcde",
 			},
 			expectedError: "invalid Runner value: failed to validate runner",
 		},
 		{
 			name: "invalid job type",
-			cfg: job.Config{
+			cfg: Config{
 				Type:   "invalid",
 				Runner: "mattermost/calls-recorder:v0.1.0",
 			},
@@ -64,8 +62,8 @@ func TestJobConfigIsValid(t *testing.T) {
 		},
 		{
 			name: "invalid max duration",
-			cfg: job.Config{
-				Type:           job.TypeRecording,
+			cfg: Config{
+				Type:           TypeRecording,
 				Runner:         "mattermost/calls-recorder:v0.3.1",
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: -1,
@@ -74,8 +72,8 @@ func TestJobConfigIsValid(t *testing.T) {
 		},
 		{
 			name: "invalid version",
-			cfg: job.Config{
-				Type:      job.TypeRecording,
+			cfg: Config{
+				Type:      TypeRecording,
 				Runner:    "mattermost/calls-recorder:v0.1.0",
 				InputData: recorderCfg.ToMap(),
 			},
@@ -83,8 +81,8 @@ func TestJobConfigIsValid(t *testing.T) {
 		},
 		{
 			name: "valid",
-			cfg: job.Config{
-				Type:           job.TypeRecording,
+			cfg: Config{
+				Type:           TypeRecording,
 				Runner:         "mattermost/calls-recorder:v0.3.1",
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
