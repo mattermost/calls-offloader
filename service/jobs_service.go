@@ -9,6 +9,7 @@ import (
 
 	"github.com/mattermost/calls-offloader/service/docker"
 	"github.com/mattermost/calls-offloader/service/job"
+	"github.com/mattermost/calls-offloader/service/kubernetes"
 
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
@@ -35,7 +36,9 @@ func NewJobService(cfg JobsConfig, log mlog.LoggerIFace) (JobService, error) {
 			MaxConcurrentJobs: cfg.MaxConcurrentJobs,
 		})
 	case JobAPITypeKubernetes:
-		return nil, fmt.Errorf("%s API is not implemeneted", cfg.APIType)
+		return kubernetes.NewJobService(log, kubernetes.JobServiceConfig{
+			MaxConcurrentJobs: cfg.MaxConcurrentJobs,
+		})
 	default:
 		return nil, fmt.Errorf("%s API is not implemeneted", cfg.APIType)
 	}
