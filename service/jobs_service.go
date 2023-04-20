@@ -5,6 +5,7 @@ package service
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/mattermost/calls-offloader/service/docker"
 	"github.com/mattermost/calls-offloader/service/job"
@@ -19,7 +20,7 @@ type JobService interface {
 	CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error)
 	StopJob(jobID string) error
 	DeleteJob(jobID string) error
-	GetJobLogs(jobID string) ([]byte, error)
+	GetJobLogs(jobID string, stdout, stderr io.Writer) error
 	Shutdown() error
 }
 

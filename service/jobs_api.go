@@ -6,6 +6,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -188,7 +189,7 @@ func (s *Service) handleJobGetLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logs, err := s.jobService.GetJobLogs(jobID)
+	err = s.jobService.GetJobLogs(jobID, io.Discard, w)
 	if err != nil {
 		data.err = "failed to get recording job logs: " + err.Error()
 		data.code = http.StatusForbidden
@@ -196,9 +197,6 @@ func (s *Service) handleJobGetLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.code = http.StatusOK
-	if _, err := w.Write(logs); err != nil {
-		s.log.Error("failed to write response", mlog.Err(err))
-	}
 }
 
 func (s *Service) handleDeleteJob(w http.ResponseWriter, r *http.Request) {

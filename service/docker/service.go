@@ -5,7 +5,6 @@ package docker
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -119,7 +118,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("job type %s is not implemented", cfg.Type)
 	}
 
-	j := job.Job{
+	jb := job.Job{
 		Config: cfg,
 	}
 
@@ -137,7 +136,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("max concurrent jobs reached")
 	}
 
-	if err := s.UpdateJobRunner(j.Runner); err != nil {
+	if err := s.UpdateJobRunner(jb.Runner); err != nil {
 		return job.Job{}, fmt.Errorf("failed to update job runner: %w", err)
 	}
 
@@ -149,7 +148,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	var env []string
 	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
 		env = append(env, "DEV_MODE=true")
-		j.Runner = "calls-recorder:master"
+		jb.Runner = "calls-recorder:master"
 		if runtime.GOOS == "linux" {
 			networkMode = "host"
 		}
@@ -170,7 +169,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	volumeID := "calls-recorder-" + random.NewID()
 	resp, err := s.client.ContainerCreate(ctx, &container.Config{
-		Image:   j.Runner,
+		Image:   jb.Runner,
 		Tty:     false,
 		Env:     env,
 		Volumes: map[string]struct{}{volumeID + ":/recs": {}},
@@ -189,13 +188,13 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("failed to create container: %w", err)
 	}
 
-	j.ID = resp.ID[:12]
+	jb.ID = resp.ID[:12]
 
-	if err := s.client.ContainerStart(ctx, j.ID, types.ContainerStartOptions{}); err != nil {
+	if err := s.client.ContainerStart(ctx, jb.ID, types.ContainerStartOptions{}); err != nil {
 		return job.Job{}, fmt.Errorf("failed to start container: %w", err)
 	}
 
-	j.StartAt = time.Now().UnixMilli()
+	jb.StartAt = time.Now().UnixMilli()
 
 	// We wait for the container to exit to cover both the case of unexpected error or
 	// the execution reaching the configured MaxDurationSec. The provided callback is used
@@ -209,42 +208,42 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		waitCh, errCh := s.client.ContainerWait(ctx, j.ID, container.WaitConditionNotRunning)
+		waitCh, errCh := s.client.ContainerWait(ctx, jb.ID, container.WaitConditionNotRunning)
 
 		var exitCode int
 		select {
 		case res := <-waitCh:
 			exitCode = int(res.StatusCode)
-			s.log.Debug("container exited", mlog.String("jobID", j.ID), mlog.Int("exitCode", exitCode))
+			s.log.Debug("container exited", mlog.String("jobID", jb.ID), mlog.Int("exitCode", exitCode))
 		case err := <-errCh:
-			s.log.Warn("timeout reached, stopping job", mlog.Err(err), mlog.String("jobID", j.ID))
-			if err := s.StopJob(j.ID); err != nil {
-				s.log.Error("failed to stop job", mlog.Err(err), mlog.String("jobID", j.ID))
+			s.log.Warn("timeout reached, stopping job", mlog.Err(err), mlog.String("jobID", jb.ID))
+			if err := s.StopJob(jb.ID); err != nil {
+				s.log.Error("failed to stop job", mlog.Err(err), mlog.String("jobID", jb.ID))
 				return
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 			defer cancel()
-			cnt, err := s.client.ContainerInspect(ctx, j.ID)
+			cnt, err := s.client.ContainerInspect(ctx, jb.ID)
 			if err != nil {
-				s.log.Error("failed to inspect container", mlog.Err(err), mlog.String("jobID", j.ID))
+				s.log.Error("failed to inspect container", mlog.Err(err), mlog.String("jobID", jb.ID))
 				return
 			}
 
 			if cnt.State == nil {
-				s.log.Error("container state is missing", mlog.String("jobID", j.ID))
+				s.log.Error("container state is missing", mlog.String("jobID", jb.ID))
 				return
 			}
 
 			exitCode = cnt.State.ExitCode
 		}
 
-		if err := onStopCb(j, exitCode); err != nil {
-			s.log.Error("failed to run onStopCb", mlog.Err(err), mlog.String("jobID", j.ID))
+		if err := onStopCb(jb, exitCode); err != nil {
+			s.log.Error("failed to run onStopCb", mlog.Err(err), mlog.String("jobID", jb.ID))
 		}
 	}()
 
-	return j, nil
+	return jb, nil
 }
 
 func (s *JobService) StopJob(jobID string) error {
@@ -258,27 +257,26 @@ func (s *JobService) StopJob(jobID string) error {
 	return nil
 }
 
-func (s *JobService) GetJobLogs(jobID string) ([]byte, error) {
+func (s *JobService) GetJobLogs(jobID string, stdout, stderr io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
 
 	rdr, err := s.client.ContainerLogs(ctx, jobID, types.ContainerLogsOptions{
 		ShowStderr: true,
+		ShowStdout: true,
 		Since:      time.Now().Add(-time.Hour).Format(time.RFC3339),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get container logs: %s", err.Error())
+		return fmt.Errorf("failed to get container logs: %s", err.Error())
 	}
-
 	defer rdr.Close()
 
-	var buf bytes.Buffer
-	_, err = stdcopy.StdCopy(io.Discard, &buf, rdr)
+	_, err = stdcopy.StdCopy(stdout, stderr, rdr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read logs: %s", err.Error())
+		return fmt.Errorf("failed to read logs: %s", err.Error())
 	}
 
-	return buf.Bytes(), nil
+	return nil
 }
 
 func (s *JobService) DeleteJob(jobID string) error {
