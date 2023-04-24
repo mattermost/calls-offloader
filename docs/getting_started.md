@@ -2,7 +2,7 @@
 
 ## Deployment (sample diagram)
 
-![diagram](diagram.png)
+![diagram](assets/diagram.png)
 
 ## Prerequisites
 
