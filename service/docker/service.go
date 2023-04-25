@@ -77,7 +77,11 @@ func (s *JobService) Shutdown() error {
 	return s.client.Close()
 }
 
-func (s *JobService) UpdateJobRunner(runner string) error {
+func (s *JobService) Init(cfg job.ServiceConfig) error {
+	return s.updateJobRunner(cfg.Runner)
+}
+
+func (s *JobService) updateJobRunner(runner string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
 
@@ -136,7 +140,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("max concurrent jobs reached")
 	}
 
-	if err := s.UpdateJobRunner(jb.Runner); err != nil {
+	if err := s.updateJobRunner(jb.Runner); err != nil {
 		return job.Job{}, fmt.Errorf("failed to update job runner: %w", err)
 	}
 

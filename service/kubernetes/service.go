@@ -79,7 +79,7 @@ func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, err
 	}, nil
 }
 
-func (s *JobService) UpdateJobRunner(_ string) error {
+func (s *JobService) Init(_ job.ServiceConfig) error {
 	// May be best not to mess with k8s image pulling policy for now.
 	// It's probably okay for images to be pulled upon first pod execution.
 	return nil

@@ -101,3 +101,34 @@ func TestJobConfigIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestServiceConfigIsValid(t *testing.T) {
+	tcs := []struct {
+		name string
+		cfg  ServiceConfig
+		err  string
+	}{
+		{
+			name: "empty config",
+			cfg:  ServiceConfig{},
+			err:  "failed to validate runner",
+		},
+		{
+			name: "valid config",
+			cfg: ServiceConfig{
+				Runner: "mattermost/calls-recorder:v0.3.1",
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cfg.IsValid()
+			if tc.err == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tc.err)
+			}
+		})
+	}
+}

@@ -15,7 +15,7 @@ import (
 )
 
 type JobService interface {
-	UpdateJobRunner(runner string) error
+	Init(cfg job.ServiceConfig) error
 	CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error)
 	DeleteJob(jobID string) error
 	GetJobLogs(jobID string, stdout, stderr io.Writer) error

@@ -25,6 +25,10 @@ var recorderRunnerREs = []*regexp.Regexp{
 	regexp.MustCompile(`^mattermost/calls-recorder:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$`),
 }
 
+type ServiceConfig struct {
+	Runner string
+}
+
 type Job struct {
 	Config
 	ID         string         `json:"id"`
@@ -41,6 +45,10 @@ type Config struct {
 }
 
 type StopCb func(job Job, success bool) error
+
+func (c ServiceConfig) IsValid() error {
+	return RunnerIsValid(c.Runner)
+}
 
 func RunnerIsValid(runner string) error {
 	for _, re := range recorderRunnerREs {
