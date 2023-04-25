@@ -127,49 +127,6 @@ func (s *Service) handleGetJob(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Service) handleStopJob(w http.ResponseWriter, r *http.Request) {
-	data := newHTTPData()
-	defer s.httpAudit("handleStopJob", data, w, r)
-
-	clientID, code, err := s.authHandler(r)
-	if err != nil {
-		data.err = err.Error()
-		data.code = code
-		return
-	}
-	data.clientID = clientID
-
-	jobID := mux.Vars(r)["id"]
-	if jobID == "" {
-		data.err = "missing job ID"
-		data.code = http.StatusBadRequest
-		return
-	}
-
-	job, err := s.GetJob(jobID)
-	if err != nil {
-		data.err = "failed to get job " + err.Error()
-		data.code = http.StatusNotFound
-		return
-	}
-
-	err = s.jobService.StopJob(jobID)
-	if err != nil {
-		data.err = "failed to stop recording job: " + err.Error()
-		data.code = http.StatusInternalServerError
-		return
-	}
-
-	job.StopAt = time.Now().UnixMilli()
-	if err := s.SaveJob(job); err != nil {
-		data.err = "failed to save job: " + err.Error()
-		data.code = http.StatusInternalServerError
-		return
-	}
-
-	data.code = http.StatusOK
-}
-
 func (s *Service) handleJobGetLogs(w http.ResponseWriter, r *http.Request) {
 	data := newHTTPData()
 	defer s.httpAudit("handleJobGetLogs", data, w, r)

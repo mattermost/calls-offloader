@@ -211,7 +211,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 			exitCode = int(res.StatusCode)
 		case err := <-errCh:
 			s.log.Warn("timeout reached, stopping job", mlog.Err(err), mlog.String("jobID", jb.ID))
-			if err := s.StopJob(jb.ID); err != nil {
+			if err := s.stopJob(jb.ID); err != nil {
 				s.log.Error("failed to stop job", mlog.Err(err), mlog.String("jobID", jb.ID))
 				return
 			}
@@ -242,7 +242,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	return jb, nil
 }
 
-func (s *JobService) StopJob(jobID string) error {
+func (s *JobService) stopJob(jobID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
 

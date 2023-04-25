@@ -80,7 +80,6 @@ func New(cfg Config) (*Service, error) {
 	router.HandleFunc("/register", s.registerClient)
 	router.HandleFunc("/unregister", s.unregisterClient)
 	router.HandleFunc("/jobs", s.handleCreateJob).Methods("POST")
-	router.HandleFunc("/jobs/{id:[a-z0-9]{12,26}}/stop", s.handleStopJob).Methods("POST")
 	router.HandleFunc("/jobs/{id:[a-z0-9]{12,26}}/logs", s.handleJobGetLogs).Methods("GET")
 	router.HandleFunc("/jobs/{id:[a-z0-9]{12,26}}", s.handleGetJob).Methods("GET")
 	router.HandleFunc("/jobs/{id:[a-z0-9]{12,26}}", s.handleDeleteJob).Methods("DELETE")

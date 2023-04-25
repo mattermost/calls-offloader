@@ -256,10 +256,6 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	return jb, nil
 }
 
-func (s *JobService) StopJob(_ string) error {
-	return nil
-}
-
 func (s *JobService) DeleteJob(jobID string) error {
 	client := s.cs.BatchV1().Jobs(s.namespace)
 	ctx, cancel := context.WithTimeout(context.Background(), k8sRequestTimeout)

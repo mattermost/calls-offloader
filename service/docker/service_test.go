@@ -79,7 +79,7 @@ func TestCreateJob(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, job.ID)
 
-	err = jobService.StopJob(job.ID)
+	err = jobService.stopJob(job.ID)
 	require.NoError(t, err)
 
 	select {
