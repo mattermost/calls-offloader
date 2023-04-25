@@ -40,7 +40,7 @@ type Config struct {
 	InputData      map[string]any `json:"input_data,omitempty"`
 }
 
-type StopCb func(job Job, exitCode int) error
+type StopCb func(job Job, success bool) error
 
 func RunnerIsValid(runner string) error {
 	for _, re := range recorderRunnerREs {
@@ -75,8 +75,8 @@ func (c Config) IsValid() error {
 		return fmt.Errorf("invalid Type value: %q", c.Type)
 	}
 
-	if c.MaxDurationSec < 0 {
-		return fmt.Errorf("invalid MaxDurationSec value: should not be negative")
+	if c.MaxDurationSec <= 0 {
+		return fmt.Errorf("invalid MaxDurationSec value: should be positive")
 	}
 
 	return nil

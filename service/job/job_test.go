@@ -68,7 +68,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: -1,
 			},
-			expectedError: "invalid MaxDurationSec value: should not be negative",
+			expectedError: "invalid MaxDurationSec value: should be positive",
 		},
 		{
 			name: "invalid version",

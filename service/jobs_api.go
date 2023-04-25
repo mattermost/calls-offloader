@@ -48,8 +48,8 @@ func (s *Service) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job, err := s.jobService.CreateJob(cfg, func(job job.Job, exitCode int) error {
-		s.log.Info("job stopped", mlog.String("jobID", job.ID), mlog.Int("exitCode", exitCode))
+	job, err := s.jobService.CreateJob(cfg, func(job job.Job, success bool) error {
+		s.log.Info("job stopped", mlog.String("jobID", job.ID))
 
 		job, err := s.GetJob(job.ID)
 		if err != nil {
@@ -63,9 +63,9 @@ func (s *Service) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if exitCode == gracefulExitCode {
+		if success {
 			s.log.Debug("job completed successfully, removing",
-				mlog.String("jobID", job.ID), mlog.Int("exitCode", exitCode))
+				mlog.String("jobID", job.ID))
 			if err := s.jobService.DeleteJob(job.ID); err != nil {
 				return fmt.Errorf("failed to delete recording job: %w", err)
 			}

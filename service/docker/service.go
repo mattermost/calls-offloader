@@ -200,12 +200,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	// the execution reaching the configured MaxDurationSec. The provided callback is used
 	// to update the caller about this occurrence.
 	go func() {
-		timeout := dockerRequestTimeout
-		if cfg.MaxDurationSec > 0 {
-			timeout = time.Duration(cfg.MaxDurationSec) * time.Second
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.MaxDurationSec)*time.Second)
 		defer cancel()
 
 		waitCh, errCh := s.client.ContainerWait(ctx, jb.ID, container.WaitConditionNotRunning)
@@ -214,7 +209,6 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		select {
 		case res := <-waitCh:
 			exitCode = int(res.StatusCode)
-			s.log.Debug("container exited", mlog.String("jobID", jb.ID), mlog.Int("exitCode", exitCode))
 		case err := <-errCh:
 			s.log.Warn("timeout reached, stopping job", mlog.Err(err), mlog.String("jobID", jb.ID))
 			if err := s.StopJob(jb.ID); err != nil {
@@ -238,7 +232,9 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 			exitCode = cnt.State.ExitCode
 		}
 
-		if err := onStopCb(jb, exitCode); err != nil {
+		s.log.Debug("container exited", mlog.String("jobID", jb.ID), mlog.Int("exitCode", exitCode))
+
+		if err := onStopCb(jb, exitCode == 0); err != nil {
 			s.log.Error("failed to run onStopCb", mlog.Err(err), mlog.String("jobID", jb.ID))
 		}
 	}()

@@ -14,8 +14,6 @@ import (
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
-const gracefulExitCode = 143
-
 type JobService interface {
 	UpdateJobRunner(runner string) error
 	CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error)

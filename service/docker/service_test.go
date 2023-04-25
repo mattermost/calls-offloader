@@ -71,8 +71,8 @@ func TestCreateJob(t *testing.T) {
 	job, err := jobService.CreateJob(job.Config{
 		Type:   job.TypeRecording,
 		Runner: testRunner,
-	}, func(_ job.Job, exitCode int) error {
-		require.Zero(t, exitCode)
+	}, func(_ job.Job, success bool) error {
+		require.True(t, success)
 		close(stopCh)
 		return nil
 	})
