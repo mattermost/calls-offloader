@@ -2,6 +2,7 @@ on: [push]
 name: CI
 jobs:
   test:
+    name: "test"
     env:
       GOPATH: ${{ github.workspace }}
 
@@ -20,12 +21,38 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v2
       with:
         path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}
-    - name: Execute Tests
+    - name: Execute tests
       run: |
         go mod download
         go mod verify
         make test
+
+  k8s:
+    name: "k8s"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          path: ${{ github.workspace }}/${{ github.repository }}
+      - name: Start minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
+      - name: Build image
+        run: eval $(minikube -p minikube docker-env) && make docker-build
+        working-directory: ${{ github.workspace }}/${{ github.repository }}
+      - name: Create pod
+        run: |
+          kubectl run calls-offloader --image=calls-offloader:dev-$(git rev-parse --short HEAD) \
+            --env="LOGGER_CONSOLELEVEL=debug" --env="LOGGER_ENABLEFILE=false" --env="JOBS_APITYPE=kubernetes"
+        working-directory: ${{ github.workspace }}/${{ github.repository }}
+      - name: Show logs
+        run: sleep 4s && kubectl logs calls-offloader
+      - name: Check pod is running
+        run: test $(kubectl get pods calls-offloader -o jsonpath='{.status.phase}') = "Running"
