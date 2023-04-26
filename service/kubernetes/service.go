@@ -133,6 +133,11 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	env = append(env, getEnvFromConfig(recCfg)...)
 
+	tolerations, err := getJobPodTolerations()
+	if err != nil {
+		return job.Job{}, fmt.Errorf("failed to get job pod tolerations: %w", err)
+	}
+
 	spec := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -174,6 +179,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 							Name: jobName,
 						},
 					},
+					Tolerations: tolerations,
 					// We don't want to ever restart pods as any failure needs to be
 					// surfaced to the user who should hit record again.
 					RestartPolicy:                 corev1.RestartPolicyNever,
@@ -192,8 +198,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	client := s.cs.BatchV1().Jobs(s.namespace)
 	ctx, cancel := context.WithTimeout(context.Background(), k8sRequestTimeout)
 	defer cancel()
-	_, err := client.Create(ctx, spec, metav1.CreateOptions{})
-	if err != nil {
+
+	if _, err := client.Create(ctx, spec, metav1.CreateOptions{}); err != nil {
 		return job.Job{}, fmt.Errorf("failed to create job: %w", err)
 	}
 
