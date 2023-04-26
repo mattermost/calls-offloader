@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	k8sDefaultNamespace = "default"
-	k8sJobStopTimeout   = 5 * time.Minute
-	k8sRequestTimeout   = 10 * time.Second
+	k8sDefaultNamespace   = "default"
+	k8sRecordingJobPrefix = "calls-recorder-job-"
+	k8sJobStopTimeout     = 5 * time.Minute
+	k8sRequestTimeout     = 10 * time.Second
 )
 
 type JobServiceConfig struct {
@@ -94,7 +95,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("job type %s is not implemented", cfg.Type)
 	}
 
-	jobName := random.NewID()
+	jobID := random.NewID()
+	jobName := k8sRecordingJobPrefix + jobID
 
 	var recCfg recorder.RecorderConfig
 	recCfg.FromMap(cfg.InputData)
@@ -196,7 +198,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	}
 
 	jb := job.Job{
-		ID:      jobName,
+		ID:      jobID,
 		StartAt: time.Now().UnixMilli(),
 		Config:  cfg,
 	}
@@ -227,21 +229,21 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 				continue
 			}
 
-			s.log.Debug("job event", mlog.String("jobID", jobName), mlog.Any("type", ev.Type))
+			s.log.Debug("job event", mlog.String("jobID", jobID), mlog.Any("type", ev.Type))
 
 			if jb.Status.Failed > 0 {
-				s.log.Error("job failed", mlog.String("jobID", jobName))
+				s.log.Error("job failed", mlog.String("jobID", jobID))
 				break
 			}
 
 			if jb.Status.Succeeded > 0 {
-				s.log.Info("job succeeded", mlog.String("jobID", jobName))
+				s.log.Info("job succeeded", mlog.String("jobID", jobID))
 				success = true
 				break
 			}
 
 			if ev.Type == watch.Deleted {
-				s.log.Info("job was deleted", mlog.String("jobID", jobName))
+				s.log.Info("job was deleted", mlog.String("jobID", jobID))
 				return
 			}
 		}
@@ -250,7 +252,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 			s.log.Error("failed to run onStopCb", mlog.Err(err), mlog.String("jobID", jb.ID))
 		}
 
-		s.log.Info("watcher done", mlog.String("jobID", jobName))
+		s.log.Info("watcher done", mlog.String("jobID", jobID))
 	}()
 
 	return jb, nil
@@ -264,7 +266,7 @@ func (s *JobService) DeleteJob(jobID string) error {
 	// Setting propagationPolicy to "Background" so that pods
 	// are deleted as well when deleting a corresponding job.
 	propagationPolicy := metav1.DeletePropagationBackground
-	err := client.Delete(ctx, jobID, metav1.DeleteOptions{
+	err := client.Delete(ctx, k8sRecordingJobPrefix+jobID, metav1.DeleteOptions{
 		PropagationPolicy: &propagationPolicy,
 	})
 	if err != nil {
@@ -278,7 +280,7 @@ func (s *JobService) GetJobLogs(jobID string, _, stderr io.Writer) error {
 	defer cancel()
 
 	list, err := s.cs.CoreV1().Pods(s.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "job_name==" + jobID,
+		LabelSelector: "job_name==" + k8sRecordingJobPrefix + jobID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list pods for job: %w", err)
