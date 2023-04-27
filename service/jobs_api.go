@@ -48,8 +48,8 @@ func (s *Service) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job, err := s.jobService.CreateJob(cfg, func(job job.Job, exitCode int) error {
-		s.log.Info("job stopped", mlog.String("jobID", job.ID), mlog.Int("exitCode", exitCode))
+	job, err := s.jobService.CreateJob(cfg, func(job job.Job, success bool) error {
+		s.log.Info("job stopped", mlog.String("jobID", job.ID))
 
 		job, err := s.GetJob(job.ID)
 		if err != nil {
@@ -63,9 +63,9 @@ func (s *Service) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if exitCode == gracefulExitCode {
+		if success {
 			s.log.Debug("job completed successfully, removing",
-				mlog.String("jobID", job.ID), mlog.Int("exitCode", exitCode))
+				mlog.String("jobID", job.ID))
 			if err := s.jobService.DeleteJob(job.ID); err != nil {
 				return fmt.Errorf("failed to delete recording job: %w", err)
 			}
@@ -125,49 +125,6 @@ func (s *Service) handleGetJob(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(job); err != nil {
 		s.log.Error("failed to encode response", mlog.Err(err))
 	}
-}
-
-func (s *Service) handleStopJob(w http.ResponseWriter, r *http.Request) {
-	data := newHTTPData()
-	defer s.httpAudit("handleStopJob", data, w, r)
-
-	clientID, code, err := s.authHandler(r)
-	if err != nil {
-		data.err = err.Error()
-		data.code = code
-		return
-	}
-	data.clientID = clientID
-
-	jobID := mux.Vars(r)["id"]
-	if jobID == "" {
-		data.err = "missing job ID"
-		data.code = http.StatusBadRequest
-		return
-	}
-
-	job, err := s.GetJob(jobID)
-	if err != nil {
-		data.err = "failed to get job " + err.Error()
-		data.code = http.StatusNotFound
-		return
-	}
-
-	err = s.jobService.StopJob(jobID)
-	if err != nil {
-		data.err = "failed to stop recording job: " + err.Error()
-		data.code = http.StatusInternalServerError
-		return
-	}
-
-	job.StopAt = time.Now().UnixMilli()
-	if err := s.SaveJob(job); err != nil {
-		data.err = "failed to save job: " + err.Error()
-		data.code = http.StatusInternalServerError
-		return
-	}
-
-	data.code = http.StatusOK
 }
 
 func (s *Service) handleJobGetLogs(w http.ResponseWriter, r *http.Request) {
@@ -242,9 +199,9 @@ func (s *Service) handleDeleteJob(w http.ResponseWriter, r *http.Request) {
 	data.code = http.StatusOK
 }
 
-func (s *Service) handleUpdateJobRunner(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleInit(w http.ResponseWriter, r *http.Request) {
 	data := newHTTPData()
-	defer s.httpAudit("handleUpdateJobRunner", data, w, r)
+	defer s.httpAudit("handleInit", data, w, r)
 
 	clientID, code, err := s.authHandler(r)
 	if err != nil {
@@ -254,27 +211,20 @@ func (s *Service) handleUpdateJobRunner(w http.ResponseWriter, r *http.Request) 
 	}
 	data.clientID = clientID
 
-	var info map[string]interface{}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, apiRequestBodyMaxSizeBytes)).Decode(&info); err != nil {
+	var cfg job.ServiceConfig
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, apiRequestBodyMaxSizeBytes)).Decode(&cfg); err != nil {
 		data.err = "failed to decode request body: " + err.Error()
 		data.code = http.StatusBadRequest
 		return
 	}
 
-	runner, ok := info["runner"].(string)
-	if !ok || runner == "" {
-		data.err = "invalid request body"
+	if err := cfg.IsValid(); err != nil {
+		data.err = "invalid job service config: " + err.Error()
 		data.code = http.StatusBadRequest
 		return
 	}
 
-	if err := job.RunnerIsValid(runner); err != nil {
-		data.err = "invalid job runner: " + err.Error()
-		data.code = http.StatusBadRequest
-		return
-	}
-
-	if err := s.jobService.UpdateJobRunner(runner); err != nil {
+	if err := s.jobService.Init(cfg); err != nil {
 		data.err = "failed to update job runner: " + err.Error()
 		data.code = http.StatusInternalServerError
 		return

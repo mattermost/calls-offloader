@@ -276,37 +276,6 @@ func (c *Client) CreateJob(cfg job.Config) (job.Job, error) {
 	return j, nil
 }
 
-func (c *Client) StopJob(jobID string) error {
-	if c.httpClient == nil {
-		return fmt.Errorf("http client is not initialized")
-	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/jobs/%s/stop", c.cfg.httpURL, jobID), nil)
-	if err != nil {
-		return fmt.Errorf("failed to build request: %w", err)
-	}
-	req.SetBasicAuth(c.cfg.ClientID, c.cfg.AuthKey)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("http request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respData := map[string]any{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return fmt.Errorf("decoding http response failed: %w", err)
-		}
-
-		if errMsg, _ := respData["error"].(string); errMsg != "" {
-			return fmt.Errorf("request failed: %s", errMsg)
-		}
-		return fmt.Errorf("request failed with status %s", resp.Status)
-	}
-
-	return nil
-}
-
 func (c *Client) GetJob(jobID string) (job.Job, error) {
 	if c.httpClient == nil {
 		return job.Job{}, fmt.Errorf("http client is not initialized")
@@ -372,19 +341,17 @@ func (c *Client) GetJobLogs(jobID string) ([]byte, error) {
 	return data, nil
 }
 
-func (c *Client) UpdateJobRunner(runner string) error {
+func (c *Client) Init(cfg job.ServiceConfig) error {
 	if c.httpClient == nil {
 		return fmt.Errorf("http client is not initialized")
 	}
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(map[string]interface{}{
-		"runner": runner,
-	}); err != nil {
+	if err := json.NewEncoder(&buf).Encode(&cfg); err != nil {
 		return fmt.Errorf("failed to encode body: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.cfg.httpURL+"/jobs/update-runner", &buf)
+	req, err := http.NewRequest("POST", c.cfg.httpURL+"/jobs/init", &buf)
 	if err != nil {
 		return fmt.Errorf("failed to build request: %w", err)
 	}

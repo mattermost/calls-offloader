@@ -55,11 +55,11 @@ func TestNewJobService(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestUpdateJobRunner(t *testing.T) {
+func TestInit(t *testing.T) {
 	jobService, teardown := setupJobService(t)
 	defer teardown()
 
-	err := jobService.UpdateJobRunner(testRunner)
+	err := jobService.Init(job.ServiceConfig{Runner: testRunner})
 	require.NoError(t, err)
 }
 
@@ -71,15 +71,15 @@ func TestCreateJob(t *testing.T) {
 	job, err := jobService.CreateJob(job.Config{
 		Type:   job.TypeRecording,
 		Runner: testRunner,
-	}, func(_ job.Job, exitCode int) error {
-		require.Zero(t, exitCode)
+	}, func(_ job.Job, success bool) error {
+		require.True(t, success)
 		close(stopCh)
 		return nil
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, job.ID)
 
-	err = jobService.StopJob(job.ID)
+	err = jobService.stopJob(job.ID)
 	require.NoError(t, err)
 
 	select {

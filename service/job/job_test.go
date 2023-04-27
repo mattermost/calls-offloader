@@ -68,7 +68,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: -1,
 			},
-			expectedError: "invalid MaxDurationSec value: should not be negative",
+			expectedError: "invalid MaxDurationSec value: should be positive",
 		},
 		{
 			name: "invalid version",
@@ -97,6 +97,37 @@ func TestJobConfigIsValid(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				require.EqualError(t, err, tc.expectedError)
+			}
+		})
+	}
+}
+
+func TestServiceConfigIsValid(t *testing.T) {
+	tcs := []struct {
+		name string
+		cfg  ServiceConfig
+		err  string
+	}{
+		{
+			name: "empty config",
+			cfg:  ServiceConfig{},
+			err:  "failed to validate runner",
+		},
+		{
+			name: "valid config",
+			cfg: ServiceConfig{
+				Runner: "mattermost/calls-recorder:v0.3.1",
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cfg.IsValid()
+			if tc.err == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tc.err)
 			}
 		})
 	}

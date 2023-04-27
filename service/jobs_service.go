@@ -9,16 +9,14 @@ import (
 
 	"github.com/mattermost/calls-offloader/service/docker"
 	"github.com/mattermost/calls-offloader/service/job"
+	"github.com/mattermost/calls-offloader/service/kubernetes"
 
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
-const gracefulExitCode = 143
-
 type JobService interface {
-	UpdateJobRunner(runner string) error
+	Init(cfg job.ServiceConfig) error
 	CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error)
-	StopJob(jobID string) error
 	DeleteJob(jobID string) error
 	GetJobLogs(jobID string, stdout, stderr io.Writer) error
 	Shutdown() error
@@ -35,7 +33,9 @@ func NewJobService(cfg JobsConfig, log mlog.LoggerIFace) (JobService, error) {
 			MaxConcurrentJobs: cfg.MaxConcurrentJobs,
 		})
 	case JobAPITypeKubernetes:
-		return nil, fmt.Errorf("%s API is not implemeneted", cfg.APIType)
+		return kubernetes.NewJobService(log, kubernetes.JobServiceConfig{
+			MaxConcurrentJobs: cfg.MaxConcurrentJobs,
+		})
 	default:
 		return nil, fmt.Errorf("%s API is not implemeneted", cfg.APIType)
 	}
