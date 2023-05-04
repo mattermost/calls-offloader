@@ -241,3 +241,21 @@ func TestClientLogin(t *testing.T) {
 		require.Equal(t, "request failed: login failed: authentication failed", err.Error())
 	})
 }
+
+func TestClientGetVersionInfo(t *testing.T) {
+	th := SetupTestHelper(t, nil)
+	defer th.Teardown()
+
+	c, err := NewClient(ClientConfig{
+		URL:     th.apiURL,
+		AuthKey: th.srvc.cfg.API.Security.AdminSecretKey,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	info, err := c.GetVersionInfo()
+	require.NoError(t, err)
+	require.NotEmpty(t, info)
+	require.Equal(t, getVersionInfo(), info)
+}
