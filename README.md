@@ -22,6 +22,10 @@ Configuration is documented in-place through the [`config.sample.toml`](config/c
 
 Documentation and implementation details can be found in the [`docs`](docs/) folder.
 
+## Performance
+
+Performance related considerations can be found in the [Performance](docs/performance.md) section.
+
 ## Get involved
 
 Please join the [Project: calls-offloader](https://community.mattermost.com/core/channels/project-calls-offloader) channel to discuss any topic related to this project.
