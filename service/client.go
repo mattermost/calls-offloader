@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -15,6 +16,10 @@ import (
 	"time"
 
 	"github.com/mattermost/calls-offloader/service/job"
+)
+
+var (
+	ErrUnauthorized = errors.New("unauthorized")
 )
 
 type Client struct {
@@ -136,19 +141,21 @@ func (c *Client) Register(clientID string, authKey string) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusCreated {
+		return nil
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrUnauthorized
+	}
+
 	respData := map[string]string{}
 	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
 		return fmt.Errorf("decoding http response failed: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusCreated {
-		if errMsg := respData["error"]; errMsg != "" {
-			return fmt.Errorf("request failed: %s", errMsg)
-		}
-		return fmt.Errorf("request failed with status %s", resp.Status)
+	if errMsg := respData["error"]; errMsg != "" {
+		return fmt.Errorf("request failed: %s", errMsg)
 	}
-
-	return nil
+	return fmt.Errorf("request failed with status %s", resp.Status)
 }
 
 func (c *Client) Unregister(clientID string) error {
@@ -177,19 +184,21 @@ func (c *Client) Unregister(clientID string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		respData := map[string]string{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return fmt.Errorf("decoding http response failed: %w", err)
-		}
-
-		if errMsg := respData["error"]; errMsg != "" {
-			return fmt.Errorf("request failed: %s", errMsg)
-		}
-		return fmt.Errorf("request failed with status %s", resp.Status)
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrUnauthorized
 	}
 
-	return nil
+	respData := map[string]string{}
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+		return fmt.Errorf("decoding http response failed: %w", err)
+	}
+
+	if errMsg := respData["error"]; errMsg != "" {
+		return fmt.Errorf("request failed: %s", errMsg)
+	}
+	return fmt.Errorf("request failed with status %s", resp.Status)
 }
 
 func (c *Client) Login(clientID string, authKey string) error {
@@ -223,16 +232,18 @@ func (c *Client) Login(clientID string, authKey string) error {
 		return fmt.Errorf("decoding http response failed: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		if errMsg := respData["error"]; errMsg != "" {
-			return fmt.Errorf("request failed: %s", errMsg)
-		}
-		return fmt.Errorf("request failed with status %s", resp.Status)
+	if resp.StatusCode == http.StatusOK {
+		c.authToken = respData["bearerToken"]
+		return nil
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrUnauthorized
 	}
 
-	c.authToken = respData["bearerToken"]
+	if errMsg := respData["error"]; errMsg != "" {
+		return fmt.Errorf("request failed: %s", errMsg)
+	}
 
-	return nil
+	return fmt.Errorf("request failed with status %s", resp.Status)
 }
 
 func (c *Client) CreateJob(cfg job.Config) (job.Job, error) {
@@ -257,23 +268,26 @@ func (c *Client) CreateJob(cfg job.Config) (job.Job, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		respData := map[string]any{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+	if resp.StatusCode == http.StatusOK {
+		var j job.Job
+		if err := json.NewDecoder(resp.Body).Decode(&j); err != nil {
 			return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 		}
-		if errMsg, _ := respData["error"].(string); errMsg != "" {
-			return job.Job{}, fmt.Errorf("request failed: %s", errMsg)
-		}
-		return job.Job{}, fmt.Errorf("request failed with status %s", resp.Status)
+		return j, nil
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return job.Job{}, ErrUnauthorized
 	}
 
-	var j job.Job
-	if err := json.NewDecoder(resp.Body).Decode(&j); err != nil {
+	respData := map[string]any{}
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
 		return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 	}
 
-	return j, nil
+	if errMsg, _ := respData["error"].(string); errMsg != "" {
+		return job.Job{}, fmt.Errorf("request failed: %s", errMsg)
+	}
+
+	return job.Job{}, fmt.Errorf("request failed with status %s", resp.Status)
 }
 
 func (c *Client) GetJob(jobID string) (job.Job, error) {
@@ -293,23 +307,25 @@ func (c *Client) GetJob(jobID string) (job.Job, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		respData := map[string]any{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+	if resp.StatusCode == http.StatusOK {
+		var j job.Job
+		if err := json.NewDecoder(resp.Body).Decode(&j); err != nil {
 			return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 		}
-		if errMsg, _ := respData["error"].(string); errMsg != "" {
-			return job.Job{}, fmt.Errorf("request failed: %s", errMsg)
-		}
-		return job.Job{}, fmt.Errorf("request failed with status %s", resp.Status)
+
+		return j, nil
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return job.Job{}, ErrUnauthorized
 	}
 
-	var j job.Job
-	if err := json.NewDecoder(resp.Body).Decode(&j); err != nil {
+	respData := map[string]any{}
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
 		return job.Job{}, fmt.Errorf("decoding http response failed: %w", err)
 	}
-
-	return j, nil
+	if errMsg, _ := respData["error"].(string); errMsg != "" {
+		return job.Job{}, fmt.Errorf("request failed: %s", errMsg)
+	}
+	return job.Job{}, fmt.Errorf("request failed with status %s", resp.Status)
 }
 
 func (c *Client) GetJobLogs(jobID string) ([]byte, error) {
@@ -329,16 +345,18 @@ func (c *Client) GetJobLogs(jobID string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed with status %s", resp.Status)
+	if resp.StatusCode == http.StatusOK {
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response: %w", err)
+		}
+
+		return data, nil
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrUnauthorized
 	}
 
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	return data, nil
+	return nil, fmt.Errorf("request failed with status %s", resp.Status)
 }
 
 func (c *Client) Init(cfg job.ServiceConfig) error {
@@ -363,18 +381,20 @@ func (c *Client) Init(cfg job.ServiceConfig) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		respData := map[string]any{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return fmt.Errorf("decoding http response failed: %w", err)
-		}
-		if errMsg, _ := respData["error"].(string); errMsg != "" {
-			return fmt.Errorf("request failed: %s", errMsg)
-		}
-		return fmt.Errorf("request failed with status %s", resp.Status)
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	} else if resp.StatusCode == http.StatusUnauthorized {
+		return ErrUnauthorized
 	}
 
-	return nil
+	respData := map[string]any{}
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+		return fmt.Errorf("decoding http response failed: %w", err)
+	}
+	if errMsg, _ := respData["error"].(string); errMsg != "" {
+		return fmt.Errorf("request failed: %s", errMsg)
+	}
+	return fmt.Errorf("request failed with status %s", resp.Status)
 }
 
 func (c *Client) Close() error {

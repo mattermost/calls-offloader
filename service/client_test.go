@@ -126,7 +126,7 @@ func TestClientRegister(t *testing.T) {
 
 		err = c.Register("", "")
 		require.Error(t, err)
-		require.Equal(t, "request failed: authentication failed: unauthorized", err.Error())
+		require.Equal(t, ErrUnauthorized, err)
 	})
 
 	t.Run("self registering", func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestClientRegister(t *testing.T) {
 		require.NoError(t, err)
 		err = c.Register("clientB", authKey)
 		require.Error(t, err)
-		require.Equal(t, "request failed: authentication failed: unauthorized", err.Error())
+		require.Equal(t, ErrUnauthorized, err)
 
 		th.srvc.cfg.API.Security.AllowSelfRegistration = true
 		err = c.Register("clientB", authKey)
@@ -195,7 +195,7 @@ func TestClientUnregister(t *testing.T) {
 
 		err = c.Unregister("clientA")
 		require.Error(t, err)
-		require.Equal(t, "request failed: authentication failed: unauthorized", err.Error())
+		require.Equal(t, ErrUnauthorized, err)
 	})
 }
 
