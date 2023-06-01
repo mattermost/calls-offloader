@@ -12,7 +12,7 @@ import (
 	"github.com/mattermost/calls-offloader/service/auth"
 	"github.com/mattermost/calls-offloader/service/store"
 
-	"github.com/mattermost/mattermost-server/v6/shared/mlog"
+	"github.com/mattermost/mattermost-server/server/public/shared/mlog"
 
 	"github.com/gorilla/mux"
 )
