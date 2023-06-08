@@ -122,10 +122,6 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 	// We fetch the list of running containers to check against it in order to
 	// ensure we don't exceed the configured MaxConcurrentJobs limit.
 	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
-	fmt.Printf("<><> # of containers: %v\n", len(containers))
-	for i, c := range containers {
-		fmt.Printf("<><> container %d, %+#v\n", i, c)
-	}
 	if err != nil {
 		return Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
