@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/mattermost/calls-offloader/service/random"
@@ -126,13 +125,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 		return Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	numCallRecorders := 0
-	for _, c := range containers {
-		if strings.HasPrefix(c.Image, "calls-recorder") {
-			numCallRecorders++
-		}
-	}
-	if numCallRecorders >= s.cfg.MaxConcurrentJobs {
+	if len(containers) >= s.cfg.MaxConcurrentJobs {
 		return Job{}, fmt.Errorf("max concurrent jobs reached")
 	}
 
