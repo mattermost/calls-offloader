@@ -125,15 +125,14 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 		return Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	devMode := os.Getenv("DEV_MODE")
+	devMode := os.Getenv("DEV_MODE") == "true"
 
 	if len(containers) >= s.cfg.MaxConcurrentJobs {
-		if devMode == "true" {
-			s.log.Warn("max concurrent jobs reached", mlog.Int("number of active containers", len(containers)),
-				mlog.Int("cfg.MaxConcurrentJobs", s.cfg.MaxConcurrentJobs))
-		} else {
+		if !devMode {
 			return Job{}, fmt.Errorf("max concurrent jobs reached")
 		}
+		s.log.Warn("max concurrent jobs reached", mlog.Int("number of active containers", len(containers)),
+			mlog.Int("cfg.MaxConcurrentJobs", s.cfg.MaxConcurrentJobs))
 	}
 
 	if err := s.UpdateJobRunnerDocker(job.Runner); err != nil {
@@ -146,7 +145,7 @@ func (s *JobService) CreateRecordingJobDocker(cfg JobConfig, onStopCb stopCb) (J
 
 	var networkMode container.NetworkMode
 	var env []string
-	if devMode == "true" {
+	if devMode {
 		env = append(env, "DEV_MODE=true")
 		job.Runner = "calls-recorder:master"
 		if runtime.GOOS == "linux" {
