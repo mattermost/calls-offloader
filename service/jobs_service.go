@@ -17,7 +17,7 @@ import (
 	"github.com/mattermost/calls-offloader/service/random"
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 
-	"github.com/mattermost/mattermost-server/server/public/shared/mlog"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"

@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattermost/calls-recorder v0.3.2
-	github.com/mattermost/mattermost-server/server/public v0.0.0-20230601095415-7cabedb94270
+	github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/crypto v0.8.0
