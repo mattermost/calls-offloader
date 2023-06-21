@@ -4,6 +4,7 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
@@ -64,7 +65,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			name: "invalid max duration",
 			cfg: JobConfig{
 				Type:           JobTypeRecording,
-				Runner:         "mattermost/calls-recorder:v0.3.1",
+				Runner:         "mattermost/calls-recorder:v" + minSupportedRecorderVersion,
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: -1,
 			},
@@ -77,13 +78,13 @@ func TestJobConfigIsValid(t *testing.T) {
 				Runner:    "mattermost/calls-recorder:v0.1.0",
 				InputData: recorderCfg.ToMap(),
 			},
-			expectedError: "invalid Runner value: actual version (0.1.0) is lower than minimum supported version (0.3.1)",
+			expectedError: fmt.Sprintf("invalid Runner value: actual version (0.1.0) is lower than minimum supported version (%s)", minSupportedRecorderVersion),
 		},
 		{
 			name: "valid",
 			cfg: JobConfig{
 				Type:           JobTypeRecording,
-				Runner:         "mattermost/calls-recorder:v0.3.1",
+				Runner:         "mattermost/calls-recorder:v" + minSupportedRecorderVersion,
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
