@@ -18,7 +18,7 @@ import (
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 
-	"github.com/mattermost/mattermost-server/v6/shared/mlog"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -136,8 +136,13 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
+	devMode := os.Getenv("DEV_MODE") == "true"
 	if len(containers) >= s.cfg.MaxConcurrentJobs {
-		return job.Job{}, fmt.Errorf("max concurrent jobs reached")
+		if !devMode {
+			return job.Job{}, fmt.Errorf("max concurrent jobs reached")
+		}
+		s.log.Warn("max concurrent jobs reached", mlog.Int("number of active containers", len(containers)),
+			mlog.Int("cfg.MaxConcurrentJobs", s.cfg.MaxConcurrentJobs))
 	}
 
 	if err := s.updateJobRunner(jb.Runner); err != nil {
@@ -150,7 +155,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	var networkMode container.NetworkMode
 	var env []string
-	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
+	if devMode {
 		env = append(env, "DEV_MODE=true")
 		jb.Runner = "calls-recorder:master"
 		if runtime.GOOS == "linux" {
