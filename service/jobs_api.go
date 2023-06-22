@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/mattermost/calls-offloader/service/job"
+	"github.com/mattermost/calls-offloader/public/job"
 
 	"github.com/gorilla/mux"
 

@@ -4,19 +4,21 @@
 package service
 
 import (
-	"github.com/mattermost/calls-offloader/logger"
-	"github.com/mattermost/calls-offloader/service/api"
-	"github.com/mattermost/calls-offloader/service/auth"
 	"net"
 	"os"
 	"testing"
+
+	"github.com/mattermost/calls-offloader/logger"
+	"github.com/mattermost/calls-offloader/public"
+	"github.com/mattermost/calls-offloader/service/api"
+	"github.com/mattermost/calls-offloader/service/auth"
 
 	"github.com/stretchr/testify/require"
 )
 
 type TestHelper struct {
 	srvc        *Service
-	adminClient *Client
+	adminClient *public.Client
 	cfg         Config
 	tb          testing.TB
 	apiURL      string
@@ -49,7 +51,7 @@ func SetupTestHelper(tb testing.TB, cfg *Config) *TestHelper {
 	require.NoError(th.tb, err)
 	th.apiURL = "http://localhost:" + port
 
-	th.adminClient, err = NewClient(ClientConfig{
+	th.adminClient, err = public.NewClient(public.ClientConfig{
 		URL:     th.apiURL,
 		AuthKey: th.srvc.cfg.API.Security.AdminSecretKey,
 	})

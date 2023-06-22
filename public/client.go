@@ -1,7 +1,7 @@
 // Copyright (c) 2022-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-package service
+package public
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/mattermost/calls-offloader/service/job"
+	"github.com/mattermost/calls-offloader/public/job"
 )
 
 var (
@@ -430,4 +430,12 @@ func (c *Client) GetVersionInfo() (VersionInfo, error) {
 	}
 
 	return info, nil
+}
+
+func (c *Client) AuthToken() string {
+	return c.authToken
+}
+
+func (c *Client) URL() string {
+	return c.cfg.httpURL
 }

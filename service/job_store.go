@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/mattermost/calls-offloader/service/job"
+	"github.com/mattermost/calls-offloader/public/job"
 )
 
 const jobKeyPrefix = "job_"
