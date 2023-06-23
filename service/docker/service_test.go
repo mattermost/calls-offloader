@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mattermost/calls-offloader/service/job"
+	"github.com/mattermost/calls-offloader/public/job"
 
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 

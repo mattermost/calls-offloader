@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/docker"
-	"github.com/mattermost/calls-offloader/service/job"
 	"github.com/mattermost/calls-offloader/service/kubernetes"
 
 	"github.com/mattermost/mattermost/server/public/shared/mlog"

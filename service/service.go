@@ -44,7 +44,7 @@ func New(cfg Config) (*Service, error) {
 		return nil, fmt.Errorf("failed to init logger: %w", err)
 	}
 
-	s.log.Info("starting up", getVersionInfo().logFields()...)
+	s.log.Info("starting up", getVersionInfo().LogFields()...)
 
 	s.store, err = store.New(cfg.Store.DataSource)
 	if err != nil {

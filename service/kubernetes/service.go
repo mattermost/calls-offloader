@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mattermost/calls-offloader/service/job"
+	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/random"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
