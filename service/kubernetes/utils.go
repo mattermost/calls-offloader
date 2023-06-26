@@ -11,6 +11,7 @@ import (
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -84,4 +85,15 @@ func getJobPodTolerations() ([]corev1.Toleration, error) {
 	}
 
 	return defaultTolerations, nil
+}
+
+func getActiveJobs(jobs []batchv1.Job) int {
+	var activeJobs int
+	for _, jb := range jobs {
+		if jb.Status.Failed > 0 || jb.Status.Succeeded > 0 {
+			continue
+		}
+		activeJobs++
+	}
+	return activeJobs
 }

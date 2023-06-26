@@ -105,7 +105,27 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	var env []corev1.EnvVar
 	var hostNetwork bool
 
-	if os.Getenv("DEV_MODE") == "true" {
+	devMode := os.Getenv("DEV_MODE") == "true"
+
+	client := s.cs.BatchV1().Jobs(s.namespace)
+	ctx, cancel := context.WithTimeout(context.Background(), k8sRequestTimeout)
+	defer cancel()
+
+	// We fetch the list of jobs to check against it in order to
+	// ensure we don't exceed the configured MaxConcurrentJobs limit.
+	jobList, err := client.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return job.Job{}, fmt.Errorf("failed to list jobs: %w", err)
+	}
+	if activeJobs := getActiveJobs(jobList.Items); activeJobs >= s.cfg.MaxConcurrentJobs {
+		if !devMode {
+			return job.Job{}, fmt.Errorf("max concurrent jobs reached")
+		}
+		s.log.Warn("max concurrent jobs reached", mlog.Int("number of active jobs", activeJobs),
+			mlog.Int("cfg.MaxConcurrentJobs", s.cfg.MaxConcurrentJobs))
+	}
+
+	if devMode {
 		s.log.Info("DEV_MODE enabled, enabling host networking", mlog.String("hostIP", os.Getenv("HOST_IP")))
 
 		// Forward DEV_MODE to recorder process.
@@ -195,8 +215,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		},
 	}
 
-	client := s.cs.BatchV1().Jobs(s.namespace)
-	ctx, cancel := context.WithTimeout(context.Background(), k8sRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), k8sRequestTimeout)
 	defer cancel()
 
 	if _, err := client.Create(ctx, spec, metav1.CreateOptions{}); err != nil {
