@@ -83,6 +83,8 @@ func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, err
 func (s *JobService) Init(_ job.ServiceConfig) error {
 	// May be best not to mess with k8s image pulling policy for now.
 	// It's probably okay for images to be pulled upon first pod execution.
+	// In the future we may consider executing a dry-run job on start for the purpose of
+	// preloading the image.
 	return nil
 }
 
@@ -183,8 +185,9 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  jobName,
-							Image: cfg.Runner,
+							Name:            jobName,
+							Image:           cfg.Runner,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      jobName,
