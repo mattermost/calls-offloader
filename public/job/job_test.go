@@ -89,6 +89,15 @@ func TestJobConfigIsValid(t *testing.T) {
 				MaxDurationSec: 60,
 			},
 		},
+		{
+			name: "valid daily",
+			cfg: Config{
+				Type:           TypeRecording,
+				Runner:         "mattermost/calls-recorder-daily:v" + minSupportedRecorderVersion + "-dev",
+				InputData:      recorderCfg.ToMap(),
+				MaxDurationSec: 60,
+			},
+		},
 	}
 
 	for _, tc := range tcs {
@@ -117,7 +126,7 @@ func TestServiceConfigIsValid(t *testing.T) {
 		{
 			name: "valid config",
 			cfg: ServiceConfig{
-				Runner: "mattermost/calls-recorder:v0.3.1",
+				Runner: "mattermost/calls-recorder:v" + minSupportedRecorderVersion,
 			},
 		},
 	}

@@ -16,13 +16,14 @@ const (
 	TypeRecording Type = "recording"
 )
 
-const minSupportedRecorderVersion = "0.3.1"
+const minSupportedRecorderVersion = "0.4.0"
 
 // We currently support two formats, semantic version tag or image hash (sha256).
 // TODO: Consider deprecating tag version and switch to hash only.
 var recorderRunnerREs = []*regexp.Regexp{
 	regexp.MustCompile(`^mattermost/calls-recorder@sha256:\w{64}$`),
 	regexp.MustCompile(`^mattermost/calls-recorder:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$`),
+	regexp.MustCompile(`^mattermost/calls-recorder-daily:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-dev$`),
 }
 
 type ServiceConfig struct {
