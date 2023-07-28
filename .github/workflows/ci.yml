@@ -45,11 +45,15 @@ jobs:
         id: minikube
         uses: medyagh/setup-minikube@latest
       - name: Build image
-        run: eval $(minikube -p minikube docker-env) && make docker-build
+        run: |
+          eval $(minikube -p minikube docker-env) && \
+          make docker-build && \
+          echo "docker_image=$(docker images --format '{{.Repository}}:{{.Tag}}' | head -n 1)" >> "$GITHUB_ENV"
         working-directory: ${{ github.workspace }}/${{ github.repository }}
       - name: Create pod
         run: |
-          kubectl run calls-offloader --image=calls-offloader:dev-$(git rev-parse --short HEAD) \
+          echo "Running ${{ env.docker_image }}" && \
+          kubectl run calls-offloader --image="${{ env.docker_image }}" \
             --env="LOGGER_CONSOLELEVEL=debug" --env="LOGGER_ENABLEFILE=false" --env="JOBS_APITYPE=kubernetes"
         working-directory: ${{ github.workspace }}/${{ github.repository }}
       - name: Show logs
