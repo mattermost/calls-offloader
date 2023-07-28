@@ -25,7 +25,7 @@ type Service struct {
 	store        store.Store
 	auth         *auth.Service
 	log          *mlog.Logger
-	jobService   *JobService
+	jobService   JobService
 	sessionCache *auth.SessionCache
 }
 
@@ -44,7 +44,7 @@ func New(cfg Config) (*Service, error) {
 		return nil, fmt.Errorf("failed to init logger: %w", err)
 	}
 
-	s.log.Info("starting up", getVersionInfo().logFields()...)
+	s.log.Info("starting up", getVersionInfo().LogFields()...)
 
 	s.store, err = store.New(cfg.Store.DataSource)
 	if err != nil {
@@ -80,11 +80,10 @@ func New(cfg Config) (*Service, error) {
 	router.HandleFunc("/register", s.registerClient)
 	router.HandleFunc("/unregister", s.unregisterClient)
 	router.HandleFunc("/jobs", s.handleCreateJob).Methods("POST")
-	router.HandleFunc("/jobs/{id:[a-z0-9]{12}}/stop", s.handleStopJob).Methods("POST")
-	router.HandleFunc("/jobs/{id:[a-z0-9]{12}}/logs", s.handleJobGetLogs).Methods("GET")
-	router.HandleFunc("/jobs/{id:[a-z0-9]{12}}", s.handleGetJob).Methods("GET")
-	router.HandleFunc("/jobs/{id:[a-z0-9]{12}}", s.handleDeleteJob).Methods("DELETE")
-	router.HandleFunc("/jobs/update-runner", s.handleUpdateJobRunner).Methods("POST")
+	router.HandleFunc("/jobs/{id:[a-z0-9]{12,26}}/logs", s.handleJobGetLogs).Methods("GET")
+	router.HandleFunc("/jobs/{id:[a-z0-9]{12,26}}", s.handleGetJob).Methods("GET")
+	router.HandleFunc("/jobs/{id:[a-z0-9]{12,26}}", s.handleDeleteJob).Methods("DELETE")
+	router.HandleFunc("/jobs/init", s.handleInit).Methods("POST")
 
 	router.Handle("/debug/pprof/heap", pprof.Handler("heap"))
 	router.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
@@ -106,6 +105,10 @@ func (s *Service) Start() error {
 
 func (s *Service) Stop() error {
 	s.log.Info("shutting down")
+
+	if err := s.jobService.Shutdown(); err != nil {
+		return fmt.Errorf("failed to shutdown job service: %w", err)
+	}
 
 	if err := s.apiServer.Stop(); err != nil {
 		return fmt.Errorf("failed to stop api server: %w", err)

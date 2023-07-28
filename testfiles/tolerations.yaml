@@ -1,0 +1,8 @@
+- key: "test1"
+  operator: "Equal"
+  value: "true"
+  effect: "NoSchedule"
+- key: "test2"
+  operator: "Equal"
+  value: "true"
+  effect: "NoSchedule"

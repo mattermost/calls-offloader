@@ -27,7 +27,7 @@ security.session_cache.expiration_minutes = 1440
 data_source = "/tmp/calls-offloader-db"
 
 [jobs]
-# The underlying API used to create and manage jobs. At the moment, "docker" is allowed.
+# The underlying API used to create and manage jobs. Allowed values are "docker" and "kubernetes".
 api_type = "docker"
 # Maximum number of jobs allowed to be running at one time.
 max_concurrent_jobs = 2

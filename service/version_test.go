@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/mattermost/calls-offloader/public"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,10 +38,10 @@ func TestGetVersion(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		defer resp.Body.Close()
-		var info versionInfo
+		var info public.VersionInfo
 		err = json.NewDecoder(resp.Body).Decode(&info)
 		require.NoError(t, err)
-		require.Equal(t, versionInfo{
+		require.Equal(t, public.VersionInfo{
 			BuildHash:    buildHash,
 			BuildDate:    buildDate,
 			BuildVersion: buildVersion,
@@ -53,10 +55,10 @@ func TestGetVersion(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		defer resp.Body.Close()
-		var info versionInfo
+		var info public.VersionInfo
 		err = json.NewDecoder(resp.Body).Decode(&info)
 		require.NoError(t, err)
-		require.Equal(t, versionInfo{
+		require.Equal(t, public.VersionInfo{
 			GoVersion: goVersion,
 		}, info)
 	})

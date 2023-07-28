@@ -15,7 +15,7 @@ import (
 
 const bearerPrefix = "Bearer "
 
-func (s *Service) authHandler(w http.ResponseWriter, r *http.Request) (clientID string, code int, err error) {
+func (s *Service) authHandler(r *http.Request) (clientID string, code int, err error) {
 	defer func() {
 		data := newHTTPData()
 
@@ -29,12 +29,12 @@ func (s *Service) authHandler(w http.ResponseWriter, r *http.Request) (clientID 
 	}()
 
 	if strings.HasPrefix(r.Header.Get("Authorization"), bearerPrefix) {
-		return s.bearerAuthHandler(w, r)
+		return s.bearerAuthHandler(r)
 	}
-	return s.basicAuthHandler(w, r)
+	return s.basicAuthHandler(r)
 }
 
-func (s *Service) basicAuthHandler(w http.ResponseWriter, r *http.Request) (string, int, error) {
+func (s *Service) basicAuthHandler(r *http.Request) (string, int, error) {
 	clientID, authKey, ok := r.BasicAuth()
 	if !ok {
 		return "", http.StatusUnauthorized, errors.New("authentication failed: invalid auth header")
@@ -56,7 +56,7 @@ func (s *Service) basicAuthHandler(w http.ResponseWriter, r *http.Request) (stri
 	return clientID, http.StatusOK, nil
 }
 
-func (s *Service) bearerAuthHandler(w http.ResponseWriter, r *http.Request) (string, int, error) {
+func (s *Service) bearerAuthHandler(r *http.Request) (string, int, error) {
 	bearerToken, ok := parseBearerAuth(r.Header.Get("Authorization"))
 	if !ok {
 		return "", http.StatusUnauthorized, errors.New("authentication failed: invalid auth header")
@@ -91,7 +91,7 @@ func (s *Service) registerClient(w http.ResponseWriter, r *http.Request) {
 	defer s.httpAudit("registerClient", data, w, r)
 
 	if !s.cfg.API.Security.AllowSelfRegistration {
-		_, code, err := s.authHandler(w, r)
+		_, code, err := s.authHandler(r)
 		if err != nil {
 			data.err = err.Error()
 			data.code = code
@@ -138,7 +138,7 @@ func (s *Service) unregisterClient(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if admin authKey or clientID + authKey have been provided
-	authedClientID, code, err := s.authHandler(w, r)
+	authedClientID, code, err := s.authHandler(r)
 	if err != nil {
 		data.err = err.Error()
 		data.code = code

@@ -8,6 +8,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/mattermost/calls-offloader/public"
 	"github.com/mattermost/calls-offloader/service/auth"
 	"github.com/mattermost/calls-offloader/service/random"
 
@@ -16,21 +17,21 @@ import (
 
 func TestNewClient(t *testing.T) {
 	t.Run("empty config", func(t *testing.T) {
-		c, err := NewClient(ClientConfig{})
+		c, err := public.NewClient(public.ClientConfig{})
 		require.Error(t, err)
 		require.Equal(t, "failed to parse config: invalid URL value: should not be empty", err.Error())
 		require.Nil(t, c)
 	})
 
 	t.Run("invalid url", func(t *testing.T) {
-		c, err := NewClient(ClientConfig{URL: "not_a_url"})
+		c, err := public.NewClient(public.ClientConfig{URL: "not_a_url"})
 		require.Error(t, err)
 		require.Equal(t, "failed to parse config: invalid url host: should not be empty", err.Error())
 		require.Nil(t, c)
 	})
 
 	t.Run("invalid scheme", func(t *testing.T) {
-		c, err := NewClient(ClientConfig{URL: "ftp://invalid"})
+		c, err := public.NewClient(public.ClientConfig{URL: "ftp://invalid"})
 		require.Error(t, err)
 		require.Equal(t, `failed to parse config: invalid url scheme: "ftp" is not valid`, err.Error())
 		require.Nil(t, c)
@@ -38,20 +39,20 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("success http scheme", func(t *testing.T) {
 		apiURL := "http://localhost"
-		c, err := NewClient(ClientConfig{URL: apiURL})
+		c, err := public.NewClient(public.ClientConfig{URL: apiURL})
 		require.NoError(t, err)
 		require.NotNil(t, c)
 		require.NotEmpty(t, c)
-		require.Equal(t, apiURL, c.cfg.httpURL)
+		require.Equal(t, apiURL, c.URL())
 	})
 
 	t.Run("success https scheme", func(t *testing.T) {
 		apiURL := "https://localhost"
-		c, err := NewClient(ClientConfig{URL: apiURL})
+		c, err := public.NewClient(public.ClientConfig{URL: apiURL})
 		require.NoError(t, err)
 		require.NotNil(t, c)
 		require.NotEmpty(t, c)
-		require.Equal(t, apiURL, c.cfg.httpURL)
+		require.Equal(t, apiURL, c.URL())
 	})
 
 	t.Run("custom dialing function", func(t *testing.T) {
@@ -62,11 +63,11 @@ func TestNewClient(t *testing.T) {
 		}
 
 		apiURL := "http://localhost"
-		c, err := NewClient(ClientConfig{URL: apiURL}, WithDialFunc(dialFn))
+		c, err := public.NewClient(public.ClientConfig{URL: apiURL}, public.WithDialFunc(dialFn))
 		require.NoError(t, err)
 		require.NotNil(t, c)
 		require.NotEmpty(t, c)
-		require.Equal(t, apiURL, c.cfg.httpURL)
+		require.Equal(t, apiURL, c.URL())
 
 		_ = c.Register("", "")
 
@@ -78,7 +79,7 @@ func TestClientRegister(t *testing.T) {
 	th := SetupTestHelper(t, nil)
 	defer th.Teardown()
 
-	c, err := NewClient(ClientConfig{
+	c, err := public.NewClient(public.ClientConfig{
 		URL:     th.apiURL,
 		AuthKey: th.srvc.cfg.API.Security.AdminSecretKey,
 	})
@@ -116,7 +117,7 @@ func TestClientRegister(t *testing.T) {
 	})
 
 	t.Run("unauthorized", func(t *testing.T) {
-		c, err := NewClient(ClientConfig{
+		c, err := public.NewClient(public.ClientConfig{
 			URL:     th.apiURL,
 			AuthKey: th.srvc.cfg.API.Security.AdminSecretKey + "_",
 		})
@@ -126,11 +127,11 @@ func TestClientRegister(t *testing.T) {
 
 		err = c.Register("", "")
 		require.Error(t, err)
-		require.Equal(t, "request failed: authentication failed: unauthorized", err.Error())
+		require.Equal(t, public.ErrUnauthorized, err)
 	})
 
 	t.Run("self registering", func(t *testing.T) {
-		c, err := NewClient(ClientConfig{
+		c, err := public.NewClient(public.ClientConfig{
 			URL: th.apiURL,
 		})
 		require.NoError(t, err)
@@ -141,7 +142,7 @@ func TestClientRegister(t *testing.T) {
 		require.NoError(t, err)
 		err = c.Register("clientB", authKey)
 		require.Error(t, err)
-		require.Equal(t, "request failed: authentication failed: unauthorized", err.Error())
+		require.Equal(t, public.ErrUnauthorized, err)
 
 		th.srvc.cfg.API.Security.AllowSelfRegistration = true
 		err = c.Register("clientB", authKey)
@@ -153,7 +154,7 @@ func TestClientUnregister(t *testing.T) {
 	th := SetupTestHelper(t, nil)
 	defer th.Teardown()
 
-	c, err := NewClient(ClientConfig{
+	c, err := public.NewClient(public.ClientConfig{
 		URL:     th.apiURL,
 		AuthKey: th.srvc.cfg.API.Security.AdminSecretKey,
 	})
@@ -185,7 +186,7 @@ func TestClientUnregister(t *testing.T) {
 	})
 
 	t.Run("unauthorized", func(t *testing.T) {
-		c, err := NewClient(ClientConfig{
+		c, err := public.NewClient(public.ClientConfig{
 			URL:     th.apiURL,
 			AuthKey: th.srvc.cfg.API.Security.AdminSecretKey + "_",
 		})
@@ -195,7 +196,7 @@ func TestClientUnregister(t *testing.T) {
 
 		err = c.Unregister("clientA")
 		require.Error(t, err)
-		require.Equal(t, "request failed: authentication failed: unauthorized", err.Error())
+		require.Equal(t, public.ErrUnauthorized, err)
 	})
 }
 
@@ -203,7 +204,7 @@ func TestClientLogin(t *testing.T) {
 	th := SetupTestHelper(t, nil)
 	defer th.Teardown()
 
-	c, err := NewClient(ClientConfig{
+	c, err := public.NewClient(public.ClientConfig{
 		URL:     th.apiURL,
 		AuthKey: th.srvc.cfg.API.Security.AdminSecretKey,
 	})
@@ -220,7 +221,7 @@ func TestClientLogin(t *testing.T) {
 
 		err = c.Login("clientA", authKey)
 		require.NoError(t, err)
-		require.NotEmpty(t, c.authToken)
+		require.NotEmpty(t, c.AuthToken())
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -240,4 +241,22 @@ func TestClientLogin(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, "request failed: login failed: authentication failed", err.Error())
 	})
+}
+
+func TestClientGetVersionInfo(t *testing.T) {
+	th := SetupTestHelper(t, nil)
+	defer th.Teardown()
+
+	c, err := public.NewClient(public.ClientConfig{
+		URL:     th.apiURL,
+		AuthKey: th.srvc.cfg.API.Security.AdminSecretKey,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	info, err := c.GetVersionInfo()
+	require.NoError(t, err)
+	require.NotEmpty(t, info)
+	require.Equal(t, getVersionInfo(), info)
 }

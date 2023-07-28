@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"runtime"
 
+	"github.com/mattermost/calls-offloader/public"
+
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
 
@@ -17,28 +19,12 @@ var (
 	buildDate    string
 )
 
-type versionInfo struct {
-	BuildDate    string `json:"buildDate"`
-	BuildVersion string `json:"buildVersion"`
-	BuildHash    string `json:"buildHash"`
-	GoVersion    string `json:"goVersion"`
-}
-
-func getVersionInfo() versionInfo {
-	return versionInfo{
+func getVersionInfo() public.VersionInfo {
+	return public.VersionInfo{
 		BuildDate:    buildDate,
 		BuildVersion: buildVersion,
 		BuildHash:    buildHash,
 		GoVersion:    runtime.Version(),
-	}
-}
-
-func (v versionInfo) logFields() []mlog.Field {
-	return []mlog.Field{
-		mlog.String("buildDate", v.BuildDate),
-		mlog.String("buildVersion", v.BuildVersion),
-		mlog.String("buildHash", v.BuildHash),
-		mlog.String("goVersion", v.GoVersion),
 	}
 }
 

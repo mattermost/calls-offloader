@@ -74,7 +74,7 @@ type JobsConfig struct {
 }
 
 func (c JobsConfig) IsValid() error {
-	if c.APIType != JobAPITypeDocker {
+	if c.APIType != JobAPITypeDocker && c.APIType != JobAPITypeKubernetes {
 		return fmt.Errorf("invalid APIType value: %s", c.APIType)
 	}
 
@@ -105,11 +105,7 @@ func (c Config) IsValid() error {
 		return err
 	}
 
-	if err := c.Logger.IsValid(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Logger.IsValid()
 }
 
 func (c *Config) SetDefaults() {

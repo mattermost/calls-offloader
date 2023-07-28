@@ -30,8 +30,10 @@ CONFIG_APP_CODE         += ./cmd/offloader
 ## Docker Variables
 # Docker executable
 DOCKER                  := $(shell which docker)
+# Dockerfile's location
+DOCKER_FILE             += ./build/Dockerfile
 # Docker options to inherit for all docker run commands
-DOCKER_OPTS             += --rm --platform "linux/amd64"
+DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "linux/amd64"
 # Registry to upload images
 DOCKER_REGISTRY         ?= docker.io
 DOCKER_REGISTRY_REPO    ?= mattermost/${APP_NAME}-daily
@@ -39,8 +41,8 @@ DOCKER_REGISTRY_REPO    ?= mattermost/${APP_NAME}-daily
 DOCKER_USER             ?= user
 DOCKER_PASSWORD         ?= password
 ## Docker Images
-DOCKER_IMAGE_GO         += "golang:${GO_VERSION}@sha256:fa71e1447cb0241324162a6c51297206928d755b16142eceec7b809af55061e5"
-DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.50.1@sha256:94388e00f07c64262b138a7508f857473e30fdf0f59d04b546a305fc12cb5961"
+DOCKER_IMAGE_GO         += "golang:${GO_VERSION}@sha256:dd9ad81920b63c7f9f18823d888d5fdcc7e7516086fd16654d07bc437f0e2427"
+DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.52.2@sha256:5fa6a92ab28ca3421c88d2b6cd794c9759d05a999aceca73053d014aad41b9d3"
 DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.9.2@sha256:d355bd7df747a0f124f3b5e7b21e9dafd0cb19732a276f901f0fdee243ec1f3b"
 DOCKER_IMAGE_COSIGN     += "bitnami/cosign:1.8.0@sha256:8c2c61c546258fffff18b47bb82a65af6142007306b737129a7bd5429d53629a"
 DOCKER_IMAGE_GH_CLI     += "registry.internal.mattermost.com/images/build-ci:3.16.0@sha256:f6a229a9ababef3c483f237805ee4c3dbfb63f5de4fbbf58f4c4b6ed8fcd34b6"
@@ -125,11 +127,118 @@ build: go-build-docker ## to build
 .PHONY: release
 release: build github-release ## to build and release artifacts
 
+.PHONY: package
+package: docker-login docker-build docker-push ## to build, package and push the artifact to a container registry
+
+.PHONY: sign
+sign: docker-sign docker-verify ## to sign the artifact and perform verification
+
 .PHONY: lint
 lint: go-lint ## to lint
 
 .PHONY: test
 test: go-test ## to test
+
+.PHONY: docker-build
+docker-build: ## to build the docker image
+	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION}
+	$(AT)$(DOCKER) build \
+	--build-arg GO_IMAGE=${DOCKER_IMAGE_GO} \
+	-f ${DOCKER_FILE} . \
+	-t ${APP_NAME}:${APP_VERSION} || ${FAIL}
+	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION}
+
+.PHONY: docker-push
+docker-push: ## to push the docker image
+	@$(INFO) Pushing to registry...
+	$(AT)$(DOCKER) tag ${APP_NAME}:${APP_VERSION} $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION} || ${FAIL}
+	$(AT)$(DOCKER) push $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION} || ${FAIL}
+# if we are on a latest semver APP_VERSION tag, also push latest
+ifneq ($(shell echo $(APP_VERSION) | egrep '^v([0-9]+\.){0,2}(\*|[0-9]+)'),)
+  ifeq ($(shell git tag -l --sort=v:refname | tail -n1),$(APP_VERSION))
+	$(AT)$(DOCKER) tag ${APP_NAME}:${APP_VERSION} $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
+	$(AT)$(DOCKER) push $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
+  endif
+endif
+	@$(OK) Pushing to registry $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
+
+.PHONY: docker-sign
+docker-sign: ## to sign the docker image
+	@$(INFO) Signing the docker image...
+	$(AT)echo "$${COSIGN_KEY}" > cosign.key && \
+	$(DOCKER) run ${DOCKER_OPTS} \
+	--entrypoint '/bin/sh' \
+        -v $(PWD):/app -w /app \
+	-e COSIGN_PASSWORD=${COSIGN_PASSWORD} \
+	-e HOME="/tmp" \
+    ${DOCKER_IMAGE_COSIGN} \
+	-c \
+	"echo Signing... && \
+	cosign login $(DOCKER_REGISTRY) -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} && \
+	cosign sign --key cosign.key $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION}" || ${FAIL}
+# if we are on a latest semver APP_VERSION tag, also sign latest tag
+ifneq ($(shell echo $(APP_VERSION) | egrep '^v([0-9]+\.){0,2}(\*|[0-9]+)'),)
+  ifeq ($(shell git tag -l --sort=v:refname | tail -n1),$(APP_VERSION))
+	$(DOCKER) run ${DOCKER_OPTS} \
+	--entrypoint '/bin/sh' \
+        -v $(PWD):/app -w /app \
+	-e COSIGN_PASSWORD=${COSIGN_PASSWORD} \
+	-e HOME="/tmp" \
+	${DOCKER_IMAGE_COSIGN} \
+	-c \
+	"echo Signing... && \
+	cosign login $(DOCKER_REGISTRY) -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} && \
+	cosign sign --key cosign.key $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest" || ${FAIL}
+  endif
+endif
+	$(AT)rm -f cosign.key || ${FAIL}
+	@$(OK) Signing the docker image: $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
+
+.PHONY: docker-verify
+docker-verify: ## to verify the docker image
+	@$(INFO) Verifying the published docker image...
+	$(AT)echo "$${COSIGN_PUBLIC_KEY}" > cosign_public.key && \
+	$(DOCKER) run ${DOCKER_OPTS} \
+	--entrypoint '/bin/sh' \
+	-v $(PWD):/app -w /app \
+	${DOCKER_IMAGE_COSIGN} \
+	-c \
+	"echo Verifying... && \
+	cosign verify --key cosign_public.key $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION}" || ${FAIL}
+# if we are on a latest semver APP_VERSION tag, also verify latest tag
+ifneq ($(shell echo $(APP_VERSION) | egrep '^v([0-9]+\.){0,2}(\*|[0-9]+)'),)
+  ifeq ($(shell git tag -l --sort=v:refname | tail -n1),$(APP_VERSION))
+	$(DOCKER) run ${DOCKER_OPTS} \
+	--entrypoint '/bin/sh' \
+	-v $(PWD):/app -w /app \
+	${DOCKER_IMAGE_COSIGN} \
+	-c \
+	"echo Verifying... && \
+	cosign verify --key cosign_public.key $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest" || ${FAIL}
+  endif
+endif
+	$(AT)rm -f cosign_public.key || ${FAIL}
+	@$(OK) Verifying the published docker image: $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
+
+.PHONY: docker-sbom
+docker-sbom: ## to print a sbom report
+	@$(INFO) Performing Docker sbom report...
+	$(AT)$(DOCKER) sbom ${APP_NAME}:${APP_VERSION} || ${FAIL}
+	@$(OK) Performing Docker sbom report
+
+.PHONY: docker-scan
+docker-scan: ## to print a vulnerability report
+	@$(INFO) Performing Docker scan report...
+	$(AT)$(DOCKER) scan ${APP_NAME}:${APP_VERSION} || ${FAIL}
+	@$(OK) Performing Docker scan report
+
+.PHONY: docker-lint
+docker-lint: ## to lint the Dockerfile
+	@$(INFO) Dockerfile linting...
+	$(AT)$(DOCKER) run -i ${DOCKER_OPTS} \
+	${DOCKER_IMAGE_DOCKERLINT} \
+	< ${DOCKER_FILE} || ${FAIL}
+	@$(OK) Dockerfile linting
 
 .PHONY: docker-login
 docker-login: ## to login to a container registry
