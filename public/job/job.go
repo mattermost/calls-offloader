@@ -16,7 +16,7 @@ const (
 	TypeRecording Type = "recording"
 )
 
-const minSupportedRecorderVersion = "0.4.0"
+const minSupportedRecorderVersion = "0.4.1"
 
 // We currently support two formats, semantic version tag or image hash (sha256).
 // TODO: Consider deprecating tag version and switch to hash only.

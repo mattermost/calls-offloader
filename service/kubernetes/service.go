@@ -167,6 +167,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 			Labels: map[string]string{
 				// Using a custom label to easily watch the job.
 				"job_name": jobName,
+				// app label helps with fetching logs.
+				"app": "mattermost-calls-offloader",
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -180,6 +182,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 					Labels: map[string]string{
 						// Using a custom label to easily retrieve the pod later on.
 						"job_name": jobName,
+						// app label helps with fetching logs.
+						"app": "mattermost-calls-offloader",
 					},
 				},
 				Spec: corev1.PodSpec{
