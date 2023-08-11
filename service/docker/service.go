@@ -149,6 +149,11 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("failed to update job runner: %w", err)
 	}
 
+	// We create a new context as updating the job runner could have taken more
+	// than dockerRequestTimeout.
+	ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+
 	var jobData recorder.RecorderConfig
 	jobData.FromMap(cfg.InputData)
 	jobData.SetDefaults()
