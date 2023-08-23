@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/mattermost/calls-offloader/service/auth"
+
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
 
@@ -46,6 +48,23 @@ func (s *Service) basicAuthHandler(r *http.Request) (string, int, error) {
 
 	if clientID == "" {
 		return "", http.StatusUnauthorized, errors.New("authentication failed: unauthorized")
+	}
+
+	// If self registrations are enabled we attempt to automatically register the
+	// client upon the first authentication attempt. This ensures actions (e.g. starting a job)
+	// to be fully atomic.
+	if s.cfg.API.Security.AllowSelfRegistration && r.URL.Path != "/unregister" {
+		err := s.auth.Register(clientID, authKey)
+		if err != nil && err != auth.ErrAlreadyRegistered {
+			s.log.Error("failed to register client in auth handler", mlog.String("clientID", clientID), mlog.Err(err))
+			return "", http.StatusUnauthorized, errors.New("unauthorized")
+		}
+
+		if err == auth.ErrAlreadyRegistered {
+			s.log.Debug("client already registered, attempting authentication", mlog.String("clientID", clientID))
+		} else {
+			s.log.Debug("client registered during auth", mlog.String("clientID", clientID))
+		}
 	}
 
 	if err := s.auth.Authenticate(clientID, authKey); err != nil {
