@@ -12,6 +12,10 @@ import (
 
 const MinKeyLen = 32
 
+var (
+	ErrAlreadyRegistered = errors.New("registration failed: already registered")
+)
+
 type Service struct {
 	sessionCache *SessionCache
 	store        store.Store
@@ -47,7 +51,7 @@ func (s *Service) Register(id, key string) error {
 	}
 
 	if _, err := s.store.Get(id); err == nil {
-		return errors.New("registration failed: already registered")
+		return ErrAlreadyRegistered
 	} else if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return fmt.Errorf("registration failed: %w", err)
 	}
@@ -58,7 +62,7 @@ func (s *Service) Register(id, key string) error {
 	}
 
 	if err := s.store.Put(id, hash); errors.Is(err, store.ErrConflict) {
-		return errors.New("registration failed: already registered")
+		return ErrAlreadyRegistered
 	} else if err != nil {
 		return fmt.Errorf("registration failed: %w", err)
 	}

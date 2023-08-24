@@ -65,7 +65,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			name: "invalid max duration",
 			cfg: Config{
 				Type:           TypeRecording,
-				Runner:         "mattermost/calls-recorder:v" + minSupportedRecorderVersion,
+				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: -1,
 			},
@@ -78,13 +78,13 @@ func TestJobConfigIsValid(t *testing.T) {
 				Runner:    "mattermost/calls-recorder:v0.1.0",
 				InputData: recorderCfg.ToMap(),
 			},
-			expectedError: fmt.Sprintf("invalid Runner value: actual version (0.1.0) is lower than minimum supported version (%s)", minSupportedRecorderVersion),
+			expectedError: fmt.Sprintf("invalid Runner value: actual version (0.1.0) is lower than minimum supported version (%s)", MinSupportedRecorderVersion),
 		},
 		{
 			name: "valid",
 			cfg: Config{
 				Type:           TypeRecording,
-				Runner:         "mattermost/calls-recorder:v" + minSupportedRecorderVersion,
+				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
@@ -93,7 +93,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			name: "valid daily",
 			cfg: Config{
 				Type:           TypeRecording,
-				Runner:         "mattermost/calls-recorder-daily:v" + minSupportedRecorderVersion + "-dev",
+				Runner:         "mattermost/calls-recorder-daily:v" + MinSupportedRecorderVersion + "-dev",
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
@@ -126,7 +126,7 @@ func TestServiceConfigIsValid(t *testing.T) {
 		{
 			name: "valid config",
 			cfg: ServiceConfig{
-				Runner: "mattermost/calls-recorder:v" + minSupportedRecorderVersion,
+				Runner: "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
 			},
 		},
 	}

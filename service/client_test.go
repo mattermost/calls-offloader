@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/mattermost/calls-offloader/public"
+	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/auth"
 	"github.com/mattermost/calls-offloader/service/random"
 
@@ -259,4 +260,42 @@ func TestClientGetVersionInfo(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, info)
 	require.Equal(t, getVersionInfo(), info)
+}
+
+func TestClientAutoRegister(t *testing.T) {
+	th := SetupTestHelper(t, nil)
+	defer th.Teardown()
+
+	clientID := "clientA"
+
+	authKey, err := random.NewSecureString(auth.MinKeyLen)
+	require.NoError(t, err)
+
+	c, err := public.NewClient(public.ClientConfig{
+		URL:      th.apiURL,
+		ClientID: clientID,
+		AuthKey:  authKey,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	t.Run("unauthorized", func(t *testing.T) {
+		err = c.Init(job.ServiceConfig{
+			Runner: "",
+		})
+		require.EqualError(t, err, "unauthorized")
+	})
+
+	th.srvc.cfg.API.Security.AllowSelfRegistration = true
+
+	t.Run("automatic registration", func(t *testing.T) {
+		err = c.Init(job.ServiceConfig{
+			Runner: "mattermost/calls-recorder:v" + job.MinSupportedRecorderVersion,
+		})
+		require.NoError(t, err)
+
+		err := c.Login(clientID, authKey)
+		require.NoError(t, err)
+	})
 }

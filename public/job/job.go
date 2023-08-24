@@ -16,7 +16,7 @@ const (
 	TypeRecording Type = "recording"
 )
 
-const minSupportedRecorderVersion = "0.4.1"
+const MinSupportedRecorderVersion = "0.4.1"
 
 // We currently support two formats, semantic version tag or image hash (sha256).
 // TODO: Consider deprecating tag version and switch to hash only.
@@ -54,7 +54,7 @@ func (c ServiceConfig) IsValid() error {
 func RunnerIsValid(runner string) error {
 	for _, re := range recorderRunnerREs {
 		if matches := re.FindStringSubmatch(runner); len(matches) > 1 {
-			return checkMinVersion(minSupportedRecorderVersion, matches[1])
+			return checkMinVersion(MinSupportedRecorderVersion, matches[1])
 		}
 	}
 	return fmt.Errorf("failed to validate runner")
