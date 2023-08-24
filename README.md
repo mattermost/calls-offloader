@@ -24,7 +24,7 @@ Documentation and implementation details can be found in the [`docs`](docs/) fol
 
 ## Performance
 
-Performance and scalability related considerations can be found in the [Performance](docs/performance.md) section.
+Performance and scalability-related considerations can be found in the [Performance](docs/performance.md) section.
 
 ## Get involved
 
