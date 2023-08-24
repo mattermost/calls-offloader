@@ -36,7 +36,7 @@ Starting in version `v0.3.2` this service includes support for horizontal scalab
 
 #### Example (nginx)
 
-This an example snippet of config for load-balancing this service using [`nginx`](https://www.nginx.com/):
+This is an example config for load-balancing the service using [`nginx`](https://www.nginx.com/):
 
 ```
 upstream backend {
