@@ -1,6 +1,8 @@
-## Performance and scalability considerations
+## Performance
 
-### Quality profiles
+### Calls Recordings
+
+#### Quality profiles
 
 Recording quality can be configured through the [Calls plugin](https://docs.mattermost.com/configure/plugins-configuration-settings.html#call-recording-quality). At this time we provide the following quality profiles:
 
@@ -10,7 +12,7 @@ Recording quality can be configured through the [Calls plugin](https://docs.matt
 | Medium  | 720p       | 20fps     | 1.5Mbps (video) / 64Kbps (audio) |
 | High    | 1080p      | 20fps     | 2.5Mbps (video) / 64Kbps (audio) |
 
-### Benchmarks
+#### Benchmarks
 
 These are the results of a series of benchmarks that were conducted to verify the scalability capabilities of the service. All tests were executed on a AWS EC2 `c6i.2xlarge` instance which is the recommended instance class and size (`8vCPU / 16GB RAM`) for Calls recordings:
 
@@ -28,5 +30,38 @@ On the Mattermost side, it may also be necessary to tune the [`FileSettings.MaxF
 > If a load-balancer or proxy is in front of Mattermost, extra configuration may be necessary. 
 > As an example, `nginx` would likely require `client_max_body_size` to be set accordingly.
 
+## Scalability
+
+Starting in version `v0.3.2`, this service includes support for horizontal scalability. This can be achieved by adding an HTTP load balancer in front of multiple `calls-offloader` instances, and configuring the [Job Service URL](https://docs.mattermost.com/configure/plugins-configuration-settings.html#job-service-url) setting accordingly to point to the balancer's host.
+
+#### Example (nginx)
+
+This is an example config for load-balancing the service using [`nginx`](https://www.nginx.com/):
+
+```
+upstream backend {
+	server 10.0.0.1:4545;
+	server 10.0.0.2:4545;
+}
+
+server {
+	listen 4545 default_server;
+	listen [::]:4545 default_server;
+
+	location / {
+
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_set_header X-Frame-Options SAMEORIGIN;
+		proxy_buffers 256 16k;
+		proxy_buffer_size 16k;
+		proxy_read_timeout 300s;
+		proxy_pass http://backend;
+	}
+}
+```
+
 > **_Note_** 
-> At this time we don't provide an official solution for horizontal scalability of this service.
+> If deploying in a Kubernetes environment, scaling is automatically handled by the default `ClusterIP` service type without needing extra configuration.
