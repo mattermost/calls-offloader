@@ -32,7 +32,7 @@ On the Mattermost side, it may also be necessary to tune the [`FileSettings.MaxF
 
 ## Scalability
 
-Starting in version `v0.3.2` this service includes support for horizontal scalability. This can be achieved by adding an HTTP load balancer in front of multiple `calls-offloader` instances and configuring the [Job Service URL](https://docs.mattermost.com/configure/plugins-configuration-settings.html#job-service-url) setting accordingly to point to the balancer's host.
+Starting in version `v0.3.2`, this service includes support for horizontal scalability. This can be achieved by adding an HTTP load balancer in front of multiple `calls-offloader` instances, and configuring the [Job Service URL](https://docs.mattermost.com/configure/plugins-configuration-settings.html#job-service-url) setting accordingly to point to the balancer's host.
 
 #### Example (nginx)
 
