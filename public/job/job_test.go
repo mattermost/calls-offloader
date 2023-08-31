@@ -19,6 +19,7 @@ func TestJobConfigIsValid(t *testing.T) {
 	recorderCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
 	recorderCfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
 	recorderCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
+	recorderCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
 
 	tcs := []struct {
 		name          string
