@@ -33,6 +33,7 @@ func TestGetEnvFromConfig(t *testing.T) {
 				cfg.AuthToken = "authToken"
 				cfg.CallID = "callID"
 				cfg.ThreadID = "threadID"
+				cfg.RecordingID = "recordingID"
 
 				return cfg
 			}(),
@@ -52,6 +53,10 @@ func TestGetEnvFromConfig(t *testing.T) {
 				{
 					Name:  "THREAD_ID",
 					Value: "threadID",
+				},
+				{
+					Name:  "RECORDING_ID",
+					Value: "recordingID",
 				},
 				{
 					Name:  "WIDTH",
