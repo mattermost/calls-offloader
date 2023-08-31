@@ -5,6 +5,7 @@ package job
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
@@ -16,7 +17,7 @@ const (
 	TypeRecording Type = "recording"
 )
 
-const MinSupportedRecorderVersion = "0.4.1"
+const MinSupportedRecorderVersion = "0.4.2"
 
 // We currently support two formats, semantic version tag or image hash (sha256).
 // TODO: Consider deprecating tag version and switch to hash only.
@@ -52,6 +53,10 @@ func (c ServiceConfig) IsValid() error {
 }
 
 func RunnerIsValid(runner string) error {
+	if os.Getenv("DEV_MODE") == "true" {
+		return nil
+	}
+
 	for _, re := range recorderRunnerREs {
 		if matches := re.FindStringSubmatch(runner); len(matches) > 1 {
 			return checkMinVersion(MinSupportedRecorderVersion, matches[1])
