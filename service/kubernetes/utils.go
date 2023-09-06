@@ -37,6 +37,12 @@ func newInt64(val int64) *int64 {
 	return p
 }
 
+func newBool(val bool) *bool {
+	p := new(bool)
+	*p = val
+	return p
+}
+
 func getEnvFromConfig(cfg recorder.RecorderConfig) []corev1.EnvVar {
 	if cfg == (recorder.RecorderConfig{}) {
 		return nil

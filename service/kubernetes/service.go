@@ -30,6 +30,7 @@ const (
 	k8sRecordingJobPrefix = "calls-recorder-job-"
 	k8sJobStopTimeout     = 5 * time.Minute
 	k8sRequestTimeout     = 10 * time.Second
+	k8sInitContainerImage = "busybox:1.36"
 )
 
 type JobServiceConfig struct {
@@ -187,6 +188,23 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 					},
 				},
 				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name:            jobName + "-init",
+							Image:           k8sInitContainerImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								// Enabling the `kernel.unprivileged_userns_clone` sysctl at node level is necessary in order to run Chromium sandbox.
+								// See https://developer.chrome.com/docs/puppeteer/troubleshooting/#recommended-enable-user-namespace-cloning for details.
+								"sysctl",
+								"-w",
+								"kernel.unprivileged_userns_clone=1",
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: newBool(true),
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            jobName,
