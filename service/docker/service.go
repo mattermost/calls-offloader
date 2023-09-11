@@ -174,7 +174,17 @@ func (s *JobService) Shutdown() error {
 }
 
 func (s *JobService) Init(cfg job.ServiceConfig) error {
-	return s.updateJobRunner(cfg.Runner)
+	// Note: this is already called in parallel by the plugin side
+	// for each supported job type.
+	// That said, we may consider adding support to init multiple runners in
+	// parallel with a single request.
+	for _, runner := range cfg.Runners {
+		if err := s.updateJobRunner(runner); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *JobService) updateJobRunner(runner string) error {
@@ -218,7 +228,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("onStopCb should not be nil")
 	}
 
-	if cfg.Type != job.TypeRecording {
+	if cfg.Type != job.TypeRecording && cfg.Type != job.TypeTranscribing {
 		return job.Job{}, fmt.Errorf("job type %s is not implemented", cfg.Type)
 	}
 

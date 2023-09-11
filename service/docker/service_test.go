@@ -61,7 +61,7 @@ func TestInit(t *testing.T) {
 	jobService, teardown := setupJobService(t)
 	defer teardown()
 
-	err := jobService.Init(job.ServiceConfig{Runner: testRunner})
+	err := jobService.Init(job.ServiceConfig{Runners: []string{testRunner}})
 	require.NoError(t, err)
 }
 

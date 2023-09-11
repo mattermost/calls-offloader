@@ -44,7 +44,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				Type:   TypeRecording,
 				Runner: "testrepo/calls-recorder:v0.1.0",
 			},
-			expectedError: "invalid Runner value: failed to validate runner",
+			expectedError: `invalid Runner value: failed to validate runner "testrepo/calls-recorder:v0.1.0"`,
 		},
 		{
 			name: "invalid runner",
@@ -52,15 +52,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				Type:   TypeRecording,
 				Runner: "testrepo/calls-recorder@sha256:abcde",
 			},
-			expectedError: "invalid Runner value: failed to validate runner",
-		},
-		{
-			name: "invalid job type",
-			cfg: Config{
-				Type:   "invalid",
-				Runner: "mattermost/calls-recorder:v0.1.0",
-			},
-			expectedError: "invalid Type value: \"invalid\"",
+			expectedError: `invalid Runner value: failed to validate runner "testrepo/calls-recorder@sha256:abcde"`,
 		},
 		{
 			name: "invalid max duration",
@@ -71,6 +63,15 @@ func TestJobConfigIsValid(t *testing.T) {
 				MaxDurationSec: -1,
 			},
 			expectedError: "invalid MaxDurationSec value: should be positive",
+		},
+		{
+			name: "invalid job type",
+			cfg: Config{
+				Type:           "invalid",
+				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
+				MaxDurationSec: 60,
+			},
+			expectedError: "invalid Type value: \"invalid\"",
 		},
 		{
 			name: "invalid version",
@@ -122,12 +123,15 @@ func TestServiceConfigIsValid(t *testing.T) {
 		{
 			name: "empty config",
 			cfg:  ServiceConfig{},
-			err:  "failed to validate runner",
+			err:  "invalid empty Runners",
 		},
 		{
 			name: "valid config",
 			cfg: ServiceConfig{
-				Runner: "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
+				Runners: []string{
+					"mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
+					"mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion,
+				},
 			},
 		},
 	}

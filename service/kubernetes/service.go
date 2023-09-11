@@ -95,7 +95,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("onStopCb should not be nil")
 	}
 
-	if cfg.Type != job.TypeRecording {
+	if cfg.Type != job.TypeRecording && cfg.Type != job.TypeTranscribing {
 		return job.Job{}, fmt.Errorf("job type %s is not implemented", cfg.Type)
 	}
 

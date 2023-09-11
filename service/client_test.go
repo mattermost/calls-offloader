@@ -282,7 +282,7 @@ func TestClientAutoRegister(t *testing.T) {
 
 	t.Run("unauthorized", func(t *testing.T) {
 		err = c.Init(job.ServiceConfig{
-			Runner: "",
+			Runners: nil,
 		})
 		require.EqualError(t, err, "unauthorized")
 	})
@@ -291,7 +291,7 @@ func TestClientAutoRegister(t *testing.T) {
 
 	t.Run("automatic registration", func(t *testing.T) {
 		err = c.Init(job.ServiceConfig{
-			Runner: "mattermost/calls-recorder:v" + job.MinSupportedRecorderVersion,
+			Runners: []string{"mattermost/calls-recorder:v" + job.MinSupportedRecorderVersion},
 		})
 		require.NoError(t, err)
 

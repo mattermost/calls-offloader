@@ -9,26 +9,34 @@ import (
 	"regexp"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
+	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 )
 
 type Type string
 
 const (
-	TypeRecording Type = "recording"
+	TypeRecording    Type = "recording"
+	TypeTranscribing Type = "transcribing"
 )
 
-const MinSupportedRecorderVersion = "0.4.2"
+const (
+	MinSupportedRecorderVersion    = "0.4.2"
+	MinSupportedTranscriberVersion = "0.1.0"
+)
 
-// We currently support two formats, semantic version tag or image hash (sha256).
-// TODO: Consider deprecating tag version and switch to hash only.
-var recorderRunnerREs = []*regexp.Regexp{
-	regexp.MustCompile(`^mattermost/calls-recorder@sha256:\w{64}$`),
-	regexp.MustCompile(`^mattermost/calls-recorder:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$`),
-	regexp.MustCompile(`^mattermost/calls-recorder-daily:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-dev$`),
-}
+var (
+	recorderRunnerREs = []*regexp.Regexp{
+		regexp.MustCompile(`^mattermost/calls-recorder:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$`),
+		regexp.MustCompile(`^mattermost/calls-recorder-daily:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-dev$`),
+	}
+	transcriberRunnerREs = []*regexp.Regexp{
+		regexp.MustCompile(`^mattermost/calls-transcriber:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$`),
+		regexp.MustCompile(`^mattermost/calls-transcriber-daily:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-dev$`),
+	}
+)
 
 type ServiceConfig struct {
-	Runner string
+	Runners []string
 }
 
 type Job struct {
@@ -49,7 +57,16 @@ type Config struct {
 type StopCb func(job Job, success bool) error
 
 func (c ServiceConfig) IsValid() error {
-	return RunnerIsValid(c.Runner)
+	if len(c.Runners) == 0 {
+		return fmt.Errorf("invalid empty Runners")
+	}
+
+	for _, runner := range c.Runners {
+		if err := RunnerIsValid(runner); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func RunnerIsValid(runner string) error {
@@ -57,12 +74,23 @@ func RunnerIsValid(runner string) error {
 		return nil
 	}
 
+	if runner == "" {
+		return fmt.Errorf("should not be empty")
+	}
+
 	for _, re := range recorderRunnerREs {
 		if matches := re.FindStringSubmatch(runner); len(matches) > 1 {
 			return checkMinVersion(MinSupportedRecorderVersion, matches[1])
 		}
 	}
-	return fmt.Errorf("failed to validate runner")
+
+	for _, re := range transcriberRunnerREs {
+		if matches := re.FindStringSubmatch(runner); len(matches) > 1 {
+			return checkMinVersion(MinSupportedTranscriberVersion, matches[1])
+		}
+	}
+
+	return fmt.Errorf("failed to validate runner %q", runner)
 }
 
 func (c Config) IsValid() error {
@@ -70,27 +98,29 @@ func (c Config) IsValid() error {
 		return fmt.Errorf("invalid Type value: should not be empty")
 	}
 
-	if c.Runner == "" {
-		return fmt.Errorf("invalid Runner value: should not be empty")
+	if err := RunnerIsValid(c.Runner); err != nil {
+		return fmt.Errorf("invalid Runner value: %w", err)
+	}
+
+	if c.MaxDurationSec <= 0 {
+		return fmt.Errorf("invalid MaxDurationSec value: should be positive")
 	}
 
 	switch c.Type {
 	case TypeRecording:
-		if err := RunnerIsValid(c.Runner); err != nil {
-			return fmt.Errorf("invalid Runner value: %w", err)
-		}
-
 		cfg := (&recorder.RecorderConfig{}).FromMap(c.InputData)
+		cfg.SetDefaults()
+		if err := cfg.IsValid(); err != nil {
+			return fmt.Errorf("failed to validate InputData: %w", err)
+		}
+	case TypeTranscribing:
+		cfg := (&transcriber.CallTranscriberConfig{}).FromMap(c.InputData)
 		cfg.SetDefaults()
 		if err := cfg.IsValid(); err != nil {
 			return fmt.Errorf("failed to validate InputData: %w", err)
 		}
 	default:
 		return fmt.Errorf("invalid Type value: %q", c.Type)
-	}
-
-	if c.MaxDurationSec <= 0 {
-		return fmt.Errorf("invalid MaxDurationSec value: should be positive")
 	}
 
 	return nil
