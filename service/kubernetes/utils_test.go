@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetEnvFromConfig(t *testing.T) {
+func TestGetEnvFromRecorderConfig(t *testing.T) {
 	tcs := []struct {
 		name string
 		cfg  recorder.RecorderConfig
@@ -92,7 +92,7 @@ func TestGetEnvFromConfig(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			env := getEnvFromConfig(tc.cfg)
+			env := getEnvFromRecorderConfig(tc.cfg)
 			require.ElementsMatch(t, tc.env, env)
 		})
 	}

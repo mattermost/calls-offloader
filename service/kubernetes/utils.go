@@ -6,6 +6,7 @@ package kubernetes
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -43,7 +44,7 @@ func newBool(val bool) *bool {
 	return p
 }
 
-func getEnvFromConfig(cfg recorder.RecorderConfig) []corev1.EnvVar {
+func getEnvFromRecorderConfig(cfg recorder.RecorderConfig) []corev1.EnvVar {
 	if cfg == (recorder.RecorderConfig{}) {
 		return nil
 	}
@@ -102,4 +103,18 @@ func getActiveJobs(jobs []batchv1.Job) int {
 		activeJobs++
 	}
 	return activeJobs
+}
+
+func getSiteURLForJob(siteURL string) string {
+	if os.Getenv("DEV_MODE") != "true" {
+		return siteURL
+	}
+
+	u, err := url.Parse(siteURL)
+	if err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
+		u.Host = "host.minikube.internal" + ":" + u.Port()
+		siteURL = u.String()
+	}
+
+	return siteURL
 }

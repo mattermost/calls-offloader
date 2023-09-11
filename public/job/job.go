@@ -70,7 +70,7 @@ func (c ServiceConfig) IsValid() error {
 }
 
 func RunnerIsValid(runner string) error {
-	if os.Getenv("DEV_MODE") == "true" {
+	if os.Getenv("DEV_MODE") == "true" || os.Getenv("TEST_MODE") == "true" {
 		return nil
 	}
 

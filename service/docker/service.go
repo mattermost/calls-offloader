@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"runtime"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/mattermost/calls-offloader/service/random"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
+	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
 
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
@@ -31,6 +31,12 @@ import (
 const (
 	dockerRequestTimeout   = 10 * time.Second
 	dockerImagePullTimeout = 2 * time.Minute
+	dockerVolumePath       = "/data"
+)
+
+const (
+	recordingJobPrefix    = "calls-recorder"
+	transcribingJobPrefix = "calls-transcriber"
 )
 
 var (
@@ -174,12 +180,15 @@ func (s *JobService) Shutdown() error {
 }
 
 func (s *JobService) Init(cfg job.ServiceConfig) error {
-	// Note: this is already called in parallel by the plugin side
-	// for each supported job type.
-	// That said, we may consider adding support to init multiple runners in
-	// parallel with a single request.
+	errCh := make(chan error, len(cfg.Runners))
 	for _, runner := range cfg.Runners {
-		if err := s.updateJobRunner(runner); err != nil {
+		go func(r string) {
+			errCh <- s.updateJobRunner(r)
+		}(runner)
+	}
+
+	for i := 0; i < len(cfg.Runners); i++ {
+		if err := <-errCh; err != nil {
 			return err
 		}
 	}
@@ -224,17 +233,19 @@ func (s *JobService) updateJobRunner(runner string) error {
 }
 
 func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error) {
-	if onStopCb == nil {
-		return job.Job{}, fmt.Errorf("onStopCb should not be nil")
+	if err := cfg.IsValid(); err != nil {
+		return job.Job{}, fmt.Errorf("invalid job config: %w", err)
 	}
 
-	if cfg.Type != job.TypeRecording && cfg.Type != job.TypeTranscribing {
-		return job.Job{}, fmt.Errorf("job type %s is not implemented", cfg.Type)
+	if onStopCb == nil {
+		return job.Job{}, fmt.Errorf("onStopCb should not be nil")
 	}
 
 	jb := job.Job{
 		Config: cfg,
 	}
+
+	devMode := os.Getenv("DEV_MODE") == "true"
 
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
@@ -250,8 +261,6 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
-
-	devMode := os.Getenv("DEV_MODE") == "true"
 	if len(containers) >= s.cfg.MaxConcurrentJobs {
 		if !devMode {
 			return job.Job{}, fmt.Errorf("max concurrent jobs reached")
@@ -264,44 +273,48 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("failed to update job runner: %w", err)
 	}
 
+	var env []string
+	var jobPrefix string
+	switch cfg.Type {
+	case job.TypeRecording:
+		var jobData recorder.RecorderConfig
+		jobData.FromMap(cfg.InputData)
+		jobData.SetDefaults()
+		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
+		jobPrefix = recordingJobPrefix
+		env = append(env, jobData.ToEnv()...)
+	case job.TypeTranscribing:
+		var jobData transcriber.CallTranscriberConfig
+		jobData.FromMap(cfg.InputData)
+		jobData.SetDefaults()
+		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
+		jobPrefix = transcribingJobPrefix
+		env = append(env, jobData.ToEnv()...)
+	}
+
+	var networkMode container.NetworkMode
+	if devMode {
+		env = append(env, "DEV_MODE=true")
+		jb.Runner = jobPrefix + ":master"
+		if runtime.GOOS == "linux" {
+			networkMode = "host"
+		}
+	}
+	if dockerNetwork := os.Getenv("DOCKER_NETWORK"); dockerNetwork != "" {
+		networkMode = container.NetworkMode(dockerNetwork)
+	}
+
 	// We create a new context as updating the job runner could have taken more
 	// than dockerRequestTimeout.
 	ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
 
-	var jobData recorder.RecorderConfig
-	jobData.FromMap(cfg.InputData)
-	jobData.SetDefaults()
-
-	var networkMode container.NetworkMode
-	var env []string
-	if devMode {
-		env = append(env, "DEV_MODE=true")
-		jb.Runner = "calls-recorder:master"
-		if runtime.GOOS == "linux" {
-			networkMode = "host"
-		}
-		if runtime.GOOS == "darwin" {
-			u, err := url.Parse(jobData.SiteURL)
-			if err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
-				u.Host = "host.docker.internal" + ":" + u.Port()
-				jobData.SiteURL = u.String()
-			}
-		}
-	}
-
-	if dockerNetwork := os.Getenv("DOCKER_NETWORK"); dockerNetwork != "" {
-		networkMode = container.NetworkMode(dockerNetwork)
-	}
-
-	env = append(env, jobData.ToEnv()...)
-
-	volumeID := "calls-recorder-" + random.NewID()
+	volumeID := jobPrefix + "-" + random.NewID()
 	resp, err := s.client.ContainerCreate(ctx, &container.Config{
 		Image:   jb.Runner,
 		Tty:     false,
 		Env:     env,
-		Volumes: map[string]struct{}{volumeID + ":/recs": {}},
+		Volumes: map[string]struct{}{volumeID + ":" + dockerVolumePath: {}},
 		Labels: map[string]string{
 			// app label helps with identifying jobs.
 			"app": "mattermost-calls-offloader",
@@ -310,7 +323,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		NetworkMode: networkMode,
 		Mounts: []mount.Mount{
 			{
-				Target: "/recs",
+				Target: dockerVolumePath,
 				Source: volumeID,
 				Type:   "volume",
 			},
