@@ -78,13 +78,14 @@ func (s *JobService) Shutdown() error {
 }
 
 func (s *JobService) Init(cfg job.ServiceConfig) error {
-	if os.Getenv("DEV_MODE") == "true" {
-		cfg.Runner = "calls-recorder:master"
-	}
 	return s.updateJobRunner(cfg.Runner)
 }
 
 func (s *JobService) updateJobRunner(runner string) error {
+	if os.Getenv("DEV_MODE") == "true" {
+		runner = "calls-recorder:master"
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
 
@@ -148,6 +149,15 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 			mlog.Int("cfg.MaxConcurrentJobs", s.cfg.MaxConcurrentJobs))
 	}
 
+	if err := s.updateJobRunner(jb.Runner); err != nil {
+		return job.Job{}, fmt.Errorf("failed to update job runner: %w", err)
+	}
+
+	// We create a new context as updating the job runner could have taken more
+	// than dockerRequestTimeout.
+	ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+
 	var jobData recorder.RecorderConfig
 	jobData.FromMap(cfg.InputData)
 	jobData.SetDefaults()
@@ -174,15 +184,6 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	}
 
 	env = append(env, jobData.ToEnv()...)
-
-	if err := s.updateJobRunner(jb.Runner); err != nil {
-		return job.Job{}, fmt.Errorf("failed to update job runner: %w", err)
-	}
-
-	// We create a new context as updating the job runner could have taken more
-	// than dockerRequestTimeout.
-	ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
-	defer cancel()
 
 	volumeID := "calls-recorder-" + random.NewID()
 	resp, err := s.client.ContainerCreate(ctx, &container.Config{
