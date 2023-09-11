@@ -82,6 +82,10 @@ func (s *JobService) Init(cfg job.ServiceConfig) error {
 }
 
 func (s *JobService) updateJobRunner(runner string) error {
+	if os.Getenv("DEV_MODE") == "true" {
+		runner = "calls-recorder:master"
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
 
