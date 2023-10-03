@@ -105,6 +105,8 @@ spec:
             value: "kubernetes"
           - name: JOBS_MAXCONCURRENTJOBS
             value: "1"
+          - name: JOBS_FAILEDJOBSRETENTIONTIME
+            value: "7d"
           - name: API_SECURITY_ALLOWSELFREGISTRATION # This should only be set to true if running the service inside a private network.
             value: "true"
           - name: LOGGER_CONSOLELEVEL

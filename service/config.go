@@ -5,6 +5,7 @@ package service
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mattermost/calls-offloader/logger"
 	"github.com/mattermost/calls-offloader/service/api"
@@ -69,8 +70,9 @@ const (
 )
 
 type JobsConfig struct {
-	APIType           JobAPIType `toml:"api_type"`
-	MaxConcurrentJobs int        `toml:"max_concurrent_jobs"`
+	APIType                 JobAPIType    `toml:"api_type"`
+	MaxConcurrentJobs       int           `toml:"max_concurrent_jobs"`
+	FailedJobsRetentionTime time.Duration `toml:"failed_jobs_retention_time"`
 }
 
 func (c JobsConfig) IsValid() error {
@@ -80,6 +82,14 @@ func (c JobsConfig) IsValid() error {
 
 	if c.MaxConcurrentJobs <= 0 {
 		return fmt.Errorf("invalid MaxConcurrentJobs value: should be greater than zero")
+	}
+
+	if c.FailedJobsRetentionTime < 0 {
+		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be a positive duration")
+	}
+
+	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
+		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
 	}
 
 	return nil
