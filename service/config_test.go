@@ -10,79 +10,60 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRetentionTimeParse(t *testing.T) {
-	newRT := func(d time.Duration) *RetentionTime {
-		rt := RetentionTime(d)
-		return &rt
-	}
-
+func TestParseRetentionTime(t *testing.T) {
 	tcs := []struct {
 		name     string
-		data     []byte
-		rt       *RetentionTime
-		expected *RetentionTime
+		input    string
+		expected time.Duration
 		err      string
 	}{
 		{
-			name:     "nil pointer",
-			data:     nil,
-			rt:       nil,
-			expected: nil,
-			err:      "invalid nil pointer",
-		},
-		{
 			name:     "invalid formatting",
-			data:     []byte("10dd"),
-			rt:       newRT(0),
-			expected: newRT(0),
+			input:    "10dd",
+			expected: 0,
 			err:      "invalid retention time format",
 		},
 		{
 			name:     "mixed units",
-			data:     []byte("10h10m"),
-			rt:       newRT(0),
-			expected: newRT(0),
+			input:    "10h10m",
+			expected: 0,
 			err:      "invalid retention time format",
 		},
 		{
 			name:     "seconds",
-			data:     []byte("45s"),
-			rt:       newRT(0),
-			expected: newRT(0),
+			input:    "45s",
+			expected: 0,
 			err:      "invalid retention time format",
 		},
 		{
 			name:     "minutes",
-			data:     []byte("45m"),
-			rt:       newRT(0),
-			expected: newRT(time.Minute * 45),
+			input:    "45m",
+			expected: time.Minute * 45,
 			err:      "",
 		},
 		{
 			name:     "hours",
-			data:     []byte("24h"),
-			rt:       newRT(0),
-			expected: newRT(time.Hour * 24),
+			input:    "24h",
+			expected: time.Hour * 24,
 			err:      "",
 		},
 		{
 			name:     "days",
-			data:     []byte("10d"),
-			rt:       newRT(0),
-			expected: newRT(time.Hour * 24 * 10),
+			input:    "10d",
+			expected: time.Hour * 24 * 10,
 			err:      "",
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.rt.UnmarshalText(tc.data)
+			d, err := parseRetentionTime(tc.input)
 			if tc.err != "" {
 				require.EqualError(t, err, tc.err)
 			} else {
 				require.NoError(t, err)
 			}
-			require.Equal(t, tc.expected, tc.rt)
+			require.Equal(t, tc.expected, d)
 		})
 	}
 }

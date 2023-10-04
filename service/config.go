@@ -78,45 +78,67 @@ const (
 type JobsConfig struct {
 	APIType                 JobAPIType    `toml:"api_type"`
 	MaxConcurrentJobs       int           `toml:"max_concurrent_jobs"`
-	FailedJobsRetentionTime RetentionTime `toml:"failed_jobs_retention_time"`
-}
-
-type RetentionTime time.Duration
-
-func (rt RetentionTime) Duration() time.Duration {
-	return time.Duration(rt)
+	FailedJobsRetentionTime time.Duration `toml:"failed_jobs_retention_time"`
 }
 
 // We need some custom parsing since duration doesn't support days.
-func (rt *RetentionTime) UnmarshalText(data []byte) error {
-	if rt == nil {
-		return fmt.Errorf("invalid nil pointer")
-	}
-
-	val := string(data)
-
+func parseRetentionTime(val string) (time.Duration, error) {
 	// Validate against expected format
 	matches := retentionTimeRE.FindStringSubmatch(val)
 	if len(matches) != 3 {
-		return fmt.Errorf("invalid retention time format")
+		return 0, fmt.Errorf("invalid retention time format")
 	}
 
 	// Parse days into duration
 	if matches[2] == "d" {
 		numDays, err := strconv.Atoi(matches[1])
 		if err != nil {
-			return err
+			return 0, err
 		}
-		*rt = RetentionTime(time.Hour * 24 * time.Duration(numDays))
-		return nil
+		return time.Hour * 24 * time.Duration(numDays), nil
 	}
 
 	// Fallback to native duration parsing for anything else
 	d, err := time.ParseDuration(val)
 	if err != nil {
+		return 0, err
+	}
+
+	return d, nil
+}
+
+func (c *JobsConfig) UnmarshalTOML(data interface{}) error {
+	if c == nil {
+		return fmt.Errorf("invalid nil pointer")
+	}
+
+	m, ok := data.(map[string]any)
+	if !ok {
+		return fmt.Errorf("invalid data type")
+	}
+
+	apiType, ok := m["api_type"].(string)
+	if !ok {
+		return fmt.Errorf("invalid api_type type")
+	}
+	c.APIType = JobAPIType(apiType)
+
+	maxConcurrentJobs, ok := m["max_concurrent_jobs"].(int64)
+	if !ok {
+		return fmt.Errorf("invalid max_concurrent_jobs type")
+	}
+	c.MaxConcurrentJobs = int(maxConcurrentJobs)
+
+	if val, ok := m["failed_jobs_retention_time"]; ok {
+		retentionTime, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("invalid failed_jobs_retention_time type")
+		}
+
+		var err error
+		c.FailedJobsRetentionTime, err = parseRetentionTime(retentionTime)
 		return err
 	}
-	*rt = RetentionTime(d)
 
 	return nil
 }
@@ -134,7 +156,7 @@ func (c JobsConfig) IsValid() error {
 		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be a positive duration")
 	}
 
-	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime.Duration() < time.Minute {
+	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
 		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
 	}
 
