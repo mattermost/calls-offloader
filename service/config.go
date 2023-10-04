@@ -5,11 +5,17 @@ package service
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/mattermost/calls-offloader/logger"
 	"github.com/mattermost/calls-offloader/service/api"
 	"github.com/mattermost/calls-offloader/service/auth"
+)
+
+var (
+	retentionTimeRE = regexp.MustCompile(`^(\d+)([mhd])$`)
 )
 
 type SecurityConfig struct {
@@ -72,7 +78,47 @@ const (
 type JobsConfig struct {
 	APIType                 JobAPIType    `toml:"api_type"`
 	MaxConcurrentJobs       int           `toml:"max_concurrent_jobs"`
-	FailedJobsRetentionTime time.Duration `toml:"failed_jobs_retention_time"`
+	FailedJobsRetentionTime RetentionTime `toml:"failed_jobs_retention_time"`
+}
+
+type RetentionTime time.Duration
+
+func (rt RetentionTime) Duration() time.Duration {
+	return time.Duration(rt)
+}
+
+// We need some custom parsing since duration doesn't support days.
+func (rt *RetentionTime) UnmarshalText(data []byte) error {
+	if rt == nil {
+		return fmt.Errorf("invalid nil pointer")
+	}
+
+	val := string(data)
+
+	// Validate against expected format
+	matches := retentionTimeRE.FindStringSubmatch(val)
+	if len(matches) != 3 {
+		return fmt.Errorf("invalid retention time format")
+	}
+
+	// Parse days into duration
+	if matches[2] == "d" {
+		numDays, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return err
+		}
+		*rt = RetentionTime(time.Hour * 24 * time.Duration(numDays))
+		return nil
+	}
+
+	// Fallback to native duration parsing for anything else
+	d, err := time.ParseDuration(val)
+	if err != nil {
+		return err
+	}
+	*rt = RetentionTime(d)
+
+	return nil
 }
 
 func (c JobsConfig) IsValid() error {
@@ -88,7 +134,7 @@ func (c JobsConfig) IsValid() error {
 		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be a positive duration")
 	}
 
-	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
+	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime.Duration() < time.Minute {
 		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
 	}
 

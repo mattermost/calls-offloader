@@ -31,12 +31,12 @@ func NewJobService(cfg JobsConfig, log mlog.LoggerIFace) (JobService, error) {
 	case JobAPITypeDocker:
 		return docker.NewJobService(log, docker.JobServiceConfig{
 			MaxConcurrentJobs:       cfg.MaxConcurrentJobs,
-			FailedJobsRetentionTime: cfg.FailedJobsRetentionTime,
+			FailedJobsRetentionTime: cfg.FailedJobsRetentionTime.Duration(),
 		})
 	case JobAPITypeKubernetes:
 		return kubernetes.NewJobService(log, kubernetes.JobServiceConfig{
 			MaxConcurrentJobs:       cfg.MaxConcurrentJobs,
-			FailedJobsRetentionTime: cfg.FailedJobsRetentionTime,
+			FailedJobsRetentionTime: cfg.FailedJobsRetentionTime.Duration(),
 		})
 	default:
 		return nil, fmt.Errorf("%s API is not implemeneted", cfg.APIType)

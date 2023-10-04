@@ -84,7 +84,9 @@ func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, err
 }
 
 func (s *JobService) retentionJob() {
-	s.log.Info("retention job is starting")
+	s.log.Info("retention job is starting",
+		mlog.Any("retention_time", s.cfg.FailedJobsRetentionTime),
+	)
 	defer func() {
 		s.log.Info("exiting retention job")
 		close(s.retentionJobDoneCh)

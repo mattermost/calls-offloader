@@ -34,6 +34,7 @@ max_concurrent_jobs = 2
 # The time to retain failed jobs before automatically deleting them and their
 # resources (i.e. volumes containing recordings). Succeeded jobs are automatically deleted upon
 # completion. A zero value means keeping failed jobs indefinitely.
+# The supported units of time are "m" (minutes), "h" (hours) and "d" (days).
 failed_jobs_retention_time = "30d"
 
 [logger]
