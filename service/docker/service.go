@@ -140,7 +140,7 @@ func (s *JobService) retentionJob() {
 				}
 
 				if since := time.Since(finishedAt); since > s.cfg.FailedJobsRetentionTime {
-					s.log.Info("container has finished since more than the configured retention time, deleting",
+					s.log.Info("configured retention time has elapsed since the container finished, deleting",
 						mlog.String("id", cnt.ID),
 						mlog.Any("retention_time", s.cfg.FailedJobsRetentionTime),
 						mlog.Any("finish_at", finishedAt),
