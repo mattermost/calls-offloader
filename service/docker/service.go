@@ -78,7 +78,12 @@ func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, err
 		retentionJobDoneCh: make(chan struct{}),
 	}
 
-	go s.retentionJob()
+	if s.cfg.FailedJobsRetentionTime > 0 {
+		go s.retentionJob()
+	} else {
+		s.log.Info("skipping retention job", mlog.Any("retention_time", s.cfg.FailedJobsRetentionTime))
+		close(s.retentionJobDoneCh)
+	}
 
 	return s, nil
 }
