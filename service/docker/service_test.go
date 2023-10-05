@@ -5,6 +5,8 @@ package docker
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -94,5 +96,65 @@ func TestCreateJob(t *testing.T) {
 	require.Contains(t, buf.String(), "Hello from Docker!")
 
 	err = jobService.DeleteJob(job.ID)
+	require.NoError(t, err)
+}
+
+func TestFailedJobsRetention(t *testing.T) {
+	log, err := mlog.NewLogger()
+	require.NoError(t, err)
+
+	interval := dockerRetentionJobInterval
+	dockerRetentionJobInterval = time.Second
+	defer func() {
+		dockerRetentionJobInterval = interval
+	}()
+
+	jobService, err := NewJobService(log, JobServiceConfig{
+		MaxConcurrentJobs:       100,
+		FailedJobsRetentionTime: 5 * time.Second,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, jobService)
+
+	stopCh := make(chan struct{})
+	job, err := jobService.CreateJob(job.Config{
+		Type:   job.TypeRecording,
+		Runner: testRunner,
+	}, func(_ job.Job, success bool) error {
+		require.True(t, success)
+		close(stopCh)
+		return nil
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, job.ID)
+
+	err = jobService.stopJob(job.ID)
+	require.NoError(t, err)
+
+	select {
+	case <-stopCh:
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "timed out waiting for stopCh")
+	}
+
+	// Verify the container still exists.
+	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+	_, err = jobService.client.ContainerInspect(ctx, job.ID)
+	require.NoError(t, err)
+
+	// Wait enough for the retention job to trigger.
+	time.Sleep(8 * time.Second)
+
+	// Verify the container has been deleted
+	ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+	_, err = jobService.client.ContainerInspect(ctx, job.ID)
+	require.EqualError(t, err, fmt.Sprintf("Error: No such container: %s", job.ID))
+
+	err = jobService.Shutdown()
+	require.NoError(t, err)
+
+	err = log.Shutdown()
 	require.NoError(t, err)
 }

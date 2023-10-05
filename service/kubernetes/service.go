@@ -34,7 +34,8 @@ const (
 )
 
 type JobServiceConfig struct {
-	MaxConcurrentJobs int
+	MaxConcurrentJobs       int
+	FailedJobsRetentionTime time.Duration
 }
 
 type JobService struct {
@@ -161,6 +162,11 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("failed to get job pod tolerations: %w", err)
 	}
 
+	var ttlSecondsAfterFinished *int32
+	if s.cfg.FailedJobsRetentionTime > 0 {
+		ttlSecondsAfterFinished = newInt32(int32(s.cfg.FailedJobsRetentionTime.Seconds()))
+	}
+
 	spec := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -175,9 +181,10 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		Spec: batchv1.JobSpec{
 			// We only support one recording job at a time and don't want it to
 			// restart on failure.
-			Parallelism:  newInt32(1),
-			Completions:  newInt32(1),
-			BackoffLimit: newInt32(0),
+			Parallelism:             newInt32(1),
+			Completions:             newInt32(1),
+			BackoffLimit:            newInt32(0),
+			TTLSecondsAfterFinished: ttlSecondsAfterFinished,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{

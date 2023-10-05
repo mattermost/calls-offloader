@@ -5,10 +5,17 @@ package service
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
+	"time"
 
 	"github.com/mattermost/calls-offloader/logger"
 	"github.com/mattermost/calls-offloader/service/api"
 	"github.com/mattermost/calls-offloader/service/auth"
+)
+
+var (
+	retentionTimeRE = regexp.MustCompile(`^(\d+)([mhd])$`)
 )
 
 type SecurityConfig struct {
@@ -69,8 +76,71 @@ const (
 )
 
 type JobsConfig struct {
-	APIType           JobAPIType `toml:"api_type"`
-	MaxConcurrentJobs int        `toml:"max_concurrent_jobs"`
+	APIType                 JobAPIType    `toml:"api_type"`
+	MaxConcurrentJobs       int           `toml:"max_concurrent_jobs"`
+	FailedJobsRetentionTime time.Duration `toml:"failed_jobs_retention_time"`
+}
+
+// We need some custom parsing since duration doesn't support days.
+func parseRetentionTime(val string) (time.Duration, error) {
+	// Validate against expected format
+	matches := retentionTimeRE.FindStringSubmatch(val)
+	if len(matches) != 3 {
+		return 0, fmt.Errorf("invalid retention time format")
+	}
+
+	// Parse days into duration
+	if matches[2] == "d" {
+		numDays, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return 0, err
+		}
+		return time.Hour * 24 * time.Duration(numDays), nil
+	}
+
+	// Fallback to native duration parsing for anything else
+	d, err := time.ParseDuration(val)
+	if err != nil {
+		return 0, err
+	}
+
+	return d, nil
+}
+
+func (c *JobsConfig) UnmarshalTOML(data interface{}) error {
+	if c == nil {
+		return fmt.Errorf("invalid nil pointer")
+	}
+
+	m, ok := data.(map[string]any)
+	if !ok {
+		return fmt.Errorf("invalid data type")
+	}
+
+	apiType, ok := m["api_type"].(string)
+	if !ok {
+		return fmt.Errorf("invalid api_type type")
+	}
+	c.APIType = JobAPIType(apiType)
+
+	maxConcurrentJobs, ok := m["max_concurrent_jobs"].(int64)
+	if !ok {
+		return fmt.Errorf("invalid max_concurrent_jobs type")
+	}
+	c.MaxConcurrentJobs = int(maxConcurrentJobs)
+
+	if val, ok := m["failed_jobs_retention_time"]; ok {
+		retentionTime, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("invalid failed_jobs_retention_time type")
+		}
+
+		var err error
+		c.FailedJobsRetentionTime, err = parseRetentionTime(retentionTime)
+		return err
+	}
+
+	return nil
 }
 
 func (c JobsConfig) IsValid() error {
@@ -80,6 +150,14 @@ func (c JobsConfig) IsValid() error {
 
 	if c.MaxConcurrentJobs <= 0 {
 		return fmt.Errorf("invalid MaxConcurrentJobs value: should be greater than zero")
+	}
+
+	if c.FailedJobsRetentionTime < 0 {
+		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be a positive duration")
+	}
+
+	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
+		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
 	}
 
 	return nil

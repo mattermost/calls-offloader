@@ -22,6 +22,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -33,18 +34,22 @@ const (
 )
 
 var (
-	dockerStopTimeout = 5 * time.Minute
+	dockerStopTimeout          = 5 * time.Minute
+	dockerRetentionJobInterval = time.Minute
 )
 
 type JobServiceConfig struct {
-	MaxConcurrentJobs int
+	MaxConcurrentJobs       int
+	FailedJobsRetentionTime time.Duration
 }
 
 type JobService struct {
 	cfg JobServiceConfig
 	log mlog.LoggerIFace
 
-	client *docker.Client
+	client             *docker.Client
+	stopCh             chan struct{}
+	retentionJobDoneCh chan struct{}
 }
 
 func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, error) {
@@ -65,15 +70,106 @@ func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, err
 		mlog.String("api_version", version.APIVersion),
 	)
 
-	return &JobService{
-		cfg:    cfg,
-		log:    log,
-		client: client,
-	}, nil
+	s := &JobService{
+		cfg:                cfg,
+		log:                log,
+		client:             client,
+		stopCh:             make(chan struct{}),
+		retentionJobDoneCh: make(chan struct{}),
+	}
+
+	if s.cfg.FailedJobsRetentionTime > 0 {
+		go s.retentionJob()
+	} else {
+		s.log.Info("skipping retention job", mlog.Any("retention_time", s.cfg.FailedJobsRetentionTime))
+		close(s.retentionJobDoneCh)
+	}
+
+	return s, nil
+}
+
+func (s *JobService) retentionJob() {
+	s.log.Info("retention job is starting",
+		mlog.Any("retention_time", s.cfg.FailedJobsRetentionTime),
+	)
+	defer func() {
+		s.log.Info("exiting retention job")
+		close(s.retentionJobDoneCh)
+	}()
+
+	ticker := time.NewTicker(dockerRetentionJobInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.stopCh:
+			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+			containers, err := s.client.ContainerList(ctx, types.ContainerListOptions{
+				All: true,
+				Filters: filters.NewArgs(filters.KeyValuePair{
+					Key:   "status",
+					Value: "exited",
+				}, filters.KeyValuePair{
+					Key:   "label",
+					Value: "app=mattermost-calls-offloader",
+				}),
+			})
+			cancel()
+			if err != nil {
+				s.log.Error("failed to list containers", mlog.Err(err))
+				continue
+			}
+
+			if len(containers) == 0 {
+				// nothing to do
+				continue
+			}
+
+			for _, cnt := range containers {
+				ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
+				c, err := s.client.ContainerInspect(ctx, cnt.ID)
+				cancel()
+				if err != nil {
+					s.log.Error("failed to get container", mlog.Err(err))
+					continue
+				}
+
+				if c.State == nil {
+					s.log.Error("container state is missing", mlog.String("id", cnt.ID))
+					continue
+				}
+
+				finishedAt, err := time.Parse(time.RFC3339, c.State.FinishedAt)
+				if err != nil {
+					s.log.Error("failed to parse finish time", mlog.Err(err))
+					continue
+				}
+
+				if since := time.Since(finishedAt); since > s.cfg.FailedJobsRetentionTime {
+					s.log.Info("configured retention time has elapsed since the container finished, deleting",
+						mlog.String("id", cnt.ID),
+						mlog.Any("retention_time", s.cfg.FailedJobsRetentionTime),
+						mlog.Any("finish_at", finishedAt),
+						mlog.Any("since", since),
+					)
+
+					if err := s.DeleteJob(cnt.ID); err != nil {
+						s.log.Error("failed to delete job", mlog.Err(err), mlog.String("jobID", cnt.ID))
+						continue
+					}
+				}
+			}
+		}
+	}
 }
 
 func (s *JobService) Shutdown() error {
 	s.log.Info("docker job service shutting down")
+
+	close(s.stopCh)
+	<-s.retentionJobDoneCh
+
 	return s.client.Close()
 }
 
@@ -135,7 +231,12 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	// We fetch the list of running containers to check against it in order to
 	// ensure we don't exceed the configured MaxConcurrentJobs limit.
-	containers, err := s.client.ContainerList(ctx, types.ContainerListOptions{})
+	containers, err := s.client.ContainerList(ctx, types.ContainerListOptions{
+		Filters: filters.NewArgs(filters.KeyValuePair{
+			Key:   "label",
+			Value: "app=mattermost-calls-offloader",
+		}),
+	})
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
@@ -191,6 +292,10 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		Tty:     false,
 		Env:     env,
 		Volumes: map[string]struct{}{volumeID + ":/recs": {}},
+		Labels: map[string]string{
+			// app label helps with identifying jobs.
+			"app": "mattermost-calls-offloader",
+		},
 	}, &container.HostConfig{
 		NetworkMode: networkMode,
 		Mounts: []mount.Mount{
