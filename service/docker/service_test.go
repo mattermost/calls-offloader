@@ -119,6 +119,17 @@ func TestFailedJobsRetention(t *testing.T) {
 	log, err := mlog.NewLogger()
 	require.NoError(t, err)
 
+	os.Setenv("TEST_MODE", "true")
+	defer os.Unsetenv("TEST_MODE")
+
+	var recCfg recorder.RecorderConfig
+	recCfg.SetDefaults()
+	recCfg.SiteURL = "http://localhost:8065"
+	recCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
+	recCfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	recCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
+	recCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
+
 	interval := dockerRetentionJobInterval
 	dockerRetentionJobInterval = time.Second
 	defer func() {
@@ -134,8 +145,10 @@ func TestFailedJobsRetention(t *testing.T) {
 
 	stopCh := make(chan struct{})
 	job, err := jobService.CreateJob(job.Config{
-		Type:   job.TypeRecording,
-		Runner: testRunner,
+		Type:           job.TypeRecording,
+		Runner:         testRunner,
+		MaxDurationSec: 60,
+		InputData:      recCfg.ToMap(),
 	}, func(_ job.Job, success bool) error {
 		require.True(t, success)
 		close(stopCh)
