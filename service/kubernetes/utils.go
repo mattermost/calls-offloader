@@ -10,8 +10,6 @@ import (
 	"os"
 	"strings"
 
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
-
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -44,11 +42,11 @@ func newBool(val bool) *bool {
 	return p
 }
 
-func getEnvFromRecorderConfig(cfg recorder.RecorderConfig) []corev1.EnvVar {
-	if cfg == (recorder.RecorderConfig{}) {
-		return nil
-	}
+type Mapper interface {
+	ToMap() map[string]any
+}
 
+func getEnvFromJobConfig(cfg Mapper) []corev1.EnvVar {
 	var env []corev1.EnvVar
 	for k, v := range cfg.ToMap() {
 		env = append(env, corev1.EnvVar{

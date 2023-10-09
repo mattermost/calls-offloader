@@ -1,6 +1,6 @@
 module github.com/mattermost/calls-offloader
 
-go 1.18
+go 1.21.1
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2
@@ -9,8 +9,8 @@ require (
 	github.com/docker/docker v20.10.9+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/mattermost/calls-recorder v0.4.2-0.20230830151011-a4935f7c38bf
-	github.com/mattermost/calls-transcriber v0.0.0-20230831220846-34e7c1266373
+	github.com/mattermost/calls-recorder v0.5.2-0.20231005222207-35b06266dd56
+	github.com/mattermost/calls-transcriber v0.0.0-20231009225308-0909fc1dad5b
 	github.com/mattermost/mattermost/server/public v0.0.6
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.8.4
@@ -61,7 +61,7 @@ require (
 	golang.org/x/exp v0.0.0-20200908183739-ae8ad444f925 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
