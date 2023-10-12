@@ -15,7 +15,6 @@ import (
 	"github.com/mattermost/calls-offloader/service"
 
 	"github.com/BurntSushi/toml"
-	"github.com/kelseyhightower/envconfig"
 )
 
 // loadConfig reads the config file and returns a new Config,
@@ -29,9 +28,11 @@ func loadConfig(path string) (service.Config, error) {
 	} else if _, err := toml.DecodeFile(path, &cfg); err != nil {
 		return cfg, fmt.Errorf("failed to decode config file: %w", err)
 	}
-	if err := envconfig.Process("", &cfg); err != nil {
+
+	if err := cfg.ParseFromEnv(); err != nil {
 		return cfg, err
 	}
+
 	return cfg, nil
 }
 
