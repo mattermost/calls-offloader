@@ -5,6 +5,7 @@ package service
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/mattermost/calls-offloader/logger"
 	"github.com/mattermost/calls-offloader/service/api"
 	"github.com/mattermost/calls-offloader/service/auth"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 var (
@@ -71,14 +74,14 @@ func (c StoreConfig) IsValid() error {
 type JobAPIType string
 
 const (
-	JobAPITypeDocker     = "docker"
-	JobAPITypeKubernetes = "kubernetes"
+	JobAPITypeDocker     JobAPIType = "docker"
+	JobAPITypeKubernetes            = "kubernetes"
 )
 
 type JobsConfig struct {
 	APIType                 JobAPIType    `toml:"api_type"`
 	MaxConcurrentJobs       int           `toml:"max_concurrent_jobs"`
-	FailedJobsRetentionTime time.Duration `toml:"failed_jobs_retention_time"`
+	FailedJobsRetentionTime time.Duration `toml:"failed_jobs_retention_time" ignored:"true"`
 }
 
 // We need some custom parsing since duration doesn't support days.
@@ -168,6 +171,18 @@ type Config struct {
 	Store  StoreConfig
 	Jobs   JobsConfig
 	Logger logger.Config
+}
+
+func (c *Config) ParseFromEnv() error {
+	if val := os.Getenv("JOBS_FAILEDJOBSRETENTIONTIME"); val != "" {
+		d, err := parseRetentionTime(val)
+		if err != nil {
+			return fmt.Errorf("failed to parse FailedJobsRetentionTime: %w", err)
+		}
+		c.Jobs.FailedJobsRetentionTime = d
+	}
+
+	return envconfig.Process("", c)
 }
 
 func (c Config) IsValid() error {

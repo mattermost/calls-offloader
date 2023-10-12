@@ -4,6 +4,7 @@
 package service
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -66,4 +67,34 @@ func TestParseRetentionTime(t *testing.T) {
 			require.Equal(t, tc.expected, d)
 		})
 	}
+}
+
+func TestParseFromEnv(t *testing.T) {
+	t.Run("no env", func(t *testing.T) {
+		var cfg Config
+		err := cfg.ParseFromEnv()
+		require.NoError(t, err)
+		require.Empty(t, cfg)
+	})
+
+	t.Run("FailedJobsRetentionTime", func(t *testing.T) {
+		os.Setenv("JOBS_FAILEDJOBSRETENTIONTIME", "1d")
+		defer os.Unsetenv("JOBS_FAILEDJOBSRETENTIONTIME")
+
+		var cfg Config
+		err := cfg.ParseFromEnv()
+		require.NoError(t, err)
+		require.Equal(t, time.Hour*24, cfg.Jobs.FailedJobsRetentionTime)
+	})
+
+	t.Run("override", func(t *testing.T) {
+		var cfg Config
+		cfg.Jobs.APIType = JobAPITypeKubernetes
+
+		os.Setenv("JOBS_APITYPE", "docker")
+		defer os.Unsetenv("JOBS_APITYPE")
+		err := cfg.ParseFromEnv()
+		require.NoError(t, err)
+		require.Equal(t, JobAPITypeDocker, cfg.Jobs.APIType)
+	})
 }
