@@ -537,8 +537,8 @@ github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJ
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
 github.com/mattermost/calls-recorder v0.5.3-0.20231101214409-5a6468bf48ac h1:2ZOtwlmw/TJ9KAam3qYgc5n/NUxGrJBKzAxBW9fZ70E=
 github.com/mattermost/calls-recorder v0.5.3-0.20231101214409-5a6468bf48ac/go.mod h1:s74AtCBI2tw5vcf2GJKh94G1+CVtSClbFQV+cnXm/VM=
-github.com/mattermost/calls-transcriber v0.0.0-20231009225308-0909fc1dad5b h1:QfkTWdYo72Dt8eHA1OhZOzWuOmW5v1yZ7oB3//QqUto=
-github.com/mattermost/calls-transcriber v0.0.0-20231009225308-0909fc1dad5b/go.mod h1:QsAZaFSWFa5agocLHyCD3foqDZHNLICqBR5FzSaZIT0=
+github.com/mattermost/calls-transcriber v0.0.0-20231101215444-1872330b226c h1:8XqQ3hM0gieEdfEygcSw3Evy1DJBzqlA3HqTT1taznQ=
+github.com/mattermost/calls-transcriber v0.0.0-20231101215444-1872330b226c/go.mod h1:dyHfyHL8WzWTmApWgDBuCDXdMg/OC3XSu+k+DMoX3HA=
 github.com/mattermost/logr/v2 v2.0.16 h1:jnePX4cPskC3WDFvUardh/xZfxNdsFXbEERJQ1kUEDE=
 github.com/mattermost/logr/v2 v2.0.16/go.mod h1:1dm/YhTpozsqANXxo5Pi5zYLBsal2xY0pX+JZNbzYJY=
 github.com/mattermost/mattermost/server/public v0.0.6 h1:FUaJ+P36E3Tt12Umdm8p1h7sZNUeObDk3p3aFTaBkCo=
