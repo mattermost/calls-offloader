@@ -32,7 +32,7 @@ func TestGetEnvFromJobConfig(t *testing.T) {
 				cfg.SiteURL = "http://localhost:8065"
 				cfg.AuthToken = "authToken"
 				cfg.CallID = "callID"
-				cfg.ThreadID = "threadID"
+				cfg.PostID = "postID"
 				cfg.RecordingID = "recordingID"
 
 				return cfg
@@ -51,8 +51,8 @@ func TestGetEnvFromJobConfig(t *testing.T) {
 					Value: "callID",
 				},
 				{
-					Name:  "THREAD_ID",
-					Value: "threadID",
+					Name:  "POST_ID",
+					Value: "postID",
 				},
 				{
 					Name:  "RECORDING_ID",

@@ -79,7 +79,7 @@ func TestCreateJob(t *testing.T) {
 	recCfg.SetDefaults()
 	recCfg.SiteURL = "http://localhost:8065"
 	recCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	recCfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	recCfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
 	recCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	recCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
 
@@ -126,7 +126,7 @@ func TestFailedJobsRetention(t *testing.T) {
 	recCfg.SetDefaults()
 	recCfg.SiteURL = "http://localhost:8065"
 	recCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	recCfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	recCfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
 	recCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	recCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
 
