@@ -279,14 +279,12 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	case job.TypeRecording:
 		var jobData recorder.RecorderConfig
 		jobData.FromMap(cfg.InputData)
-		jobData.SetDefaults()
 		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
 		jobPrefix = recordingJobPrefix
 		env = append(env, jobData.ToEnv()...)
 	case job.TypeTranscribing:
 		var jobData transcriber.CallTranscriberConfig
 		jobData.FromMap(cfg.InputData)
-		jobData.SetDefaults()
 		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
 		jobPrefix = transcribingJobPrefix
 		env = append(env, jobData.ToEnv()...)

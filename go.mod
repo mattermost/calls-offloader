@@ -1,6 +1,6 @@
 module github.com/mattermost/calls-offloader
 
-go 1.21.3
+go 1.21.4
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2
@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattermost/calls-recorder v0.5.3-0.20231101214409-5a6468bf48ac
-	github.com/mattermost/calls-transcriber v0.0.0-20231101215444-1872330b226c
+	github.com/mattermost/calls-transcriber v0.0.0-20231114192409-72f23a5ac871
 	github.com/mattermost/mattermost/server/public v0.0.6
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.8.4
