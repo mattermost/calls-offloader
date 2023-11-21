@@ -20,7 +20,7 @@ const (
 )
 
 const (
-	MinSupportedRecorderVersion    = "0.4.2"
+	MinSupportedRecorderVersion    = "0.6.0"
 	MinSupportedTranscriberVersion = "0.1.0"
 )
 
