@@ -6,10 +6,9 @@ package kubernetes
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
-
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -43,11 +42,11 @@ func newBool(val bool) *bool {
 	return p
 }
 
-func getEnvFromConfig(cfg recorder.RecorderConfig) []corev1.EnvVar {
-	if cfg == (recorder.RecorderConfig{}) {
-		return nil
-	}
+type Mapper interface {
+	ToMap() map[string]any
+}
 
+func getEnvFromJobConfig(cfg Mapper) []corev1.EnvVar {
 	var env []corev1.EnvVar
 	for k, v := range cfg.ToMap() {
 		env = append(env, corev1.EnvVar{
@@ -102,4 +101,18 @@ func getActiveJobs(jobs []batchv1.Job) int {
 		activeJobs++
 	}
 	return activeJobs
+}
+
+func getSiteURLForJob(siteURL string) string {
+	if os.Getenv("DEV_MODE") != "true" {
+		return siteURL
+	}
+
+	u, err := url.Parse(siteURL)
+	if err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
+		u.Host = "host.minikube.internal" + ":" + u.Port()
+		siteURL = u.String()
+	}
+
+	return siteURL
 }

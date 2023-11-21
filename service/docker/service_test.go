@@ -8,10 +8,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/mattermost/calls-offloader/public/job"
+
+	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
 
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
@@ -61,7 +64,7 @@ func TestInit(t *testing.T) {
 	jobService, teardown := setupJobService(t)
 	defer teardown()
 
-	err := jobService.Init(job.ServiceConfig{Runner: testRunner})
+	err := jobService.Init(job.ServiceConfig{Runners: []string{testRunner}})
 	require.NoError(t, err)
 }
 
@@ -69,10 +72,23 @@ func TestCreateJob(t *testing.T) {
 	jobService, teardown := setupJobService(t)
 	defer teardown()
 
+	os.Setenv("TEST_MODE", "true")
+	defer os.Unsetenv("TEST_MODE")
+
+	var recCfg recorder.RecorderConfig
+	recCfg.SetDefaults()
+	recCfg.SiteURL = "http://localhost:8065"
+	recCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
+	recCfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
+	recCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
+	recCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
+
 	stopCh := make(chan struct{})
 	job, err := jobService.CreateJob(job.Config{
-		Type:   job.TypeRecording,
-		Runner: testRunner,
+		Type:           job.TypeRecording,
+		Runner:         testRunner,
+		MaxDurationSec: 60,
+		InputData:      recCfg.ToMap(),
 	}, func(_ job.Job, success bool) error {
 		require.True(t, success)
 		close(stopCh)
@@ -103,6 +119,17 @@ func TestFailedJobsRetention(t *testing.T) {
 	log, err := mlog.NewLogger()
 	require.NoError(t, err)
 
+	os.Setenv("TEST_MODE", "true")
+	defer os.Unsetenv("TEST_MODE")
+
+	var recCfg recorder.RecorderConfig
+	recCfg.SetDefaults()
+	recCfg.SiteURL = "http://localhost:8065"
+	recCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
+	recCfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
+	recCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
+	recCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
+
 	interval := dockerRetentionJobInterval
 	dockerRetentionJobInterval = time.Second
 	defer func() {
@@ -118,8 +145,10 @@ func TestFailedJobsRetention(t *testing.T) {
 
 	stopCh := make(chan struct{})
 	job, err := jobService.CreateJob(job.Config{
-		Type:   job.TypeRecording,
-		Runner: testRunner,
+		Type:           job.TypeRecording,
+		Runner:         testRunner,
+		MaxDurationSec: 60,
+		InputData:      recCfg.ToMap(),
 	}, func(_ job.Job, success bool) error {
 		require.True(t, success)
 		close(stopCh)

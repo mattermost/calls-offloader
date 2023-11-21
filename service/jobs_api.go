@@ -42,12 +42,6 @@ func (s *Service) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if cfg.Type != job.TypeRecording {
-		data.err = "not implemented"
-		data.code = http.StatusNotImplemented
-		return
-	}
-
 	job, err := s.jobService.CreateJob(cfg, func(job job.Job, success bool) error {
 		s.log.Info("job stopped", mlog.String("jobID", job.ID))
 

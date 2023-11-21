@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"time"
 
@@ -15,6 +14,8 @@ import (
 	"github.com/mattermost/calls-offloader/service/random"
 
 	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
+	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
+
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -27,10 +28,15 @@ import (
 
 const (
 	k8sDefaultNamespace   = "default"
-	k8sRecordingJobPrefix = "calls-recorder-job-"
 	k8sJobStopTimeout     = 5 * time.Minute
 	k8sRequestTimeout     = 10 * time.Second
 	k8sInitContainerImage = "busybox:1.36"
+	k8sVolumePath         = "/data"
+)
+
+const (
+	recordingJobPrefix    = "calls-recorder"
+	transcribingJobPrefix = "calls-transcriber"
 )
 
 type JobServiceConfig struct {
@@ -91,32 +97,21 @@ func (s *JobService) Init(_ job.ServiceConfig) error {
 }
 
 func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error) {
+	if err := cfg.IsValid(); err != nil {
+		return job.Job{}, fmt.Errorf("invalid job config: %w", err)
+	}
+
 	if onStopCb == nil {
 		return job.Job{}, fmt.Errorf("onStopCb should not be nil")
 	}
 
-	if cfg.Type != job.TypeRecording {
-		return job.Job{}, fmt.Errorf("job type %s is not implemented", cfg.Type)
-	}
-
-	jobID := random.NewID()
-	jobName := k8sRecordingJobPrefix + jobID
-
-	var recCfg recorder.RecorderConfig
-	recCfg.FromMap(cfg.InputData)
-	recCfg.SetDefaults()
-
-	var env []corev1.EnvVar
-	var hostNetwork bool
-
 	devMode := os.Getenv("DEV_MODE") == "true"
-
-	client := s.cs.BatchV1().Jobs(s.namespace)
-	ctx, cancel := context.WithTimeout(context.Background(), k8sRequestTimeout)
-	defer cancel()
 
 	// We fetch the list of jobs to check against it in order to
 	// ensure we don't exceed the configured MaxConcurrentJobs limit.
+	client := s.cs.BatchV1().Jobs(s.namespace)
+	ctx, cancel := context.WithTimeout(context.Background(), k8sRequestTimeout)
+	defer cancel()
 	jobList, err := client.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to list jobs: %w", err)
@@ -129,6 +124,47 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 			mlog.Int("cfg.MaxConcurrentJobs", s.cfg.MaxConcurrentJobs))
 	}
 
+	var jobID string
+	var jobPrefix string
+	var env []corev1.EnvVar
+	var initContainers []corev1.Container
+	switch cfg.Type {
+	case job.TypeRecording:
+		var jobCfg recorder.RecorderConfig
+		jobCfg.FromMap(cfg.InputData)
+		jobCfg.SetDefaults()
+		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
+		jobPrefix = recordingJobPrefix
+		jobID = jobPrefix + "-job-" + random.NewID()
+		env = append(env, getEnvFromJobConfig(jobCfg)...)
+		initContainers = []corev1.Container{
+			{
+				Name:            jobID + "-init",
+				Image:           k8sInitContainerImage,
+				ImagePullPolicy: corev1.PullIfNotPresent,
+				Command: []string{
+					// Enabling the `kernel.unprivileged_userns_clone` sysctl at node level is necessary in order to run Chromium sandbox.
+					// See https://developer.chrome.com/docs/puppeteer/troubleshooting/#recommended-enable-user-namespace-cloning for details.
+					"sysctl",
+					"-w",
+					"kernel.unprivileged_userns_clone=1",
+				},
+				SecurityContext: &corev1.SecurityContext{
+					Privileged: newBool(true),
+				},
+			},
+		}
+	case job.TypeTranscribing:
+		var jobCfg transcriber.CallTranscriberConfig
+		jobCfg.FromMap(cfg.InputData)
+		jobCfg.SetDefaults()
+		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
+		jobPrefix = transcribingJobPrefix
+		jobID = jobPrefix + "-job-" + random.NewID()
+		env = append(env, getEnvFromJobConfig(jobCfg)...)
+	}
+
+	var hostNetwork bool
 	if devMode {
 		s.log.Info("DEV_MODE enabled, enabling host networking", mlog.String("hostIP", os.Getenv("HOST_IP")))
 
@@ -139,23 +175,11 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		})
 
 		// Use local image when running in dev mode.
-		cfg.Runner = "calls-recorder:master"
-
-		// Override the siteURL hostname with the alias so that the recorder can
-		// connect.
-		u, err := url.Parse(recCfg.SiteURL)
-		if err != nil {
-			s.log.Warn("failed to parse SiteURL", mlog.Err(err))
-		} else if u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" {
-			u.Host = "host.minikube.internal" + ":" + u.Port()
-			recCfg.SiteURL = u.String()
-		}
+		cfg.Runner = jobPrefix + ":master"
 
 		// Enable host networking to ease host <--> pod connectivity.
 		hostNetwork = true
 	}
-
-	env = append(env, getEnvFromConfig(recCfg)...)
 
 	tolerations, err := getJobPodTolerations()
 	if err != nil {
@@ -169,17 +193,17 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	spec := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
+			Name:      jobID,
 			Namespace: s.namespace,
 			Labels: map[string]string{
 				// Using a custom label to easily watch the job.
-				"job_name": jobName,
+				"job_name": jobID,
 				// app label helps with fetching logs.
 				"app": "mattermost-calls-offloader",
 			},
 		},
 		Spec: batchv1.JobSpec{
-			// We only support one recording job at a time and don't want it to
+			// We only support one job at a time and don't want it to
 			// restart on failure.
 			Parallelism:             newInt32(1),
 			Completions:             newInt32(1),
@@ -189,38 +213,22 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						// Using a custom label to easily retrieve the pod later on.
-						"job_name": jobName,
+						"job_name": jobID,
 						// app label helps with fetching logs.
 						"app": "mattermost-calls-offloader",
 					},
 				},
 				Spec: corev1.PodSpec{
-					InitContainers: []corev1.Container{
-						{
-							Name:            jobName + "-init",
-							Image:           k8sInitContainerImage,
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							Command: []string{
-								// Enabling the `kernel.unprivileged_userns_clone` sysctl at node level is necessary in order to run Chromium sandbox.
-								// See https://developer.chrome.com/docs/puppeteer/troubleshooting/#recommended-enable-user-namespace-cloning for details.
-								"sysctl",
-								"-w",
-								"kernel.unprivileged_userns_clone=1",
-							},
-							SecurityContext: &corev1.SecurityContext{
-								Privileged: newBool(true),
-							},
-						},
-					},
+					InitContainers: initContainers,
 					Containers: []corev1.Container{
 						{
-							Name:            jobName,
+							Name:            jobID,
 							Image:           cfg.Runner,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      jobName,
-									MountPath: "/recs",
+									Name:      jobID,
+									MountPath: k8sVolumePath,
 								},
 							},
 							Env: env,
@@ -228,7 +236,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: jobName,
+							Name: jobID,
 						},
 					},
 					Tolerations: tolerations,
@@ -271,7 +279,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		watcher, err := client.Watch(ctx, metav1.ListOptions{
 			Watch:          true,
 			TimeoutSeconds: newInt64(timeoutSecs),
-			LabelSelector:  "job_name==" + jobName,
+			LabelSelector:  "job_name==" + jobID,
 		})
 		if err != nil {
 			s.log.Error("failed to watch job", mlog.Err(err))
@@ -323,7 +331,7 @@ func (s *JobService) DeleteJob(jobID string) error {
 	// Setting propagationPolicy to "Background" so that pods
 	// are deleted as well when deleting a corresponding job.
 	propagationPolicy := metav1.DeletePropagationBackground
-	err := client.Delete(ctx, k8sRecordingJobPrefix+jobID, metav1.DeleteOptions{
+	err := client.Delete(ctx, jobID, metav1.DeleteOptions{
 		PropagationPolicy: &propagationPolicy,
 	})
 	if err != nil {
@@ -337,7 +345,7 @@ func (s *JobService) GetJobLogs(jobID string, _, stderr io.Writer) error {
 	defer cancel()
 
 	list, err := s.cs.CoreV1().Pods(s.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "job_name==" + k8sRecordingJobPrefix + jobID,
+		LabelSelector: "job_name==" + jobID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list pods for job: %w", err)

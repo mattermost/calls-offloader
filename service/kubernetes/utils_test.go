@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetEnvFromConfig(t *testing.T) {
+func TestGetEnvFromJobConfig(t *testing.T) {
 	tcs := []struct {
 		name string
 		cfg  recorder.RecorderConfig
@@ -32,7 +32,7 @@ func TestGetEnvFromConfig(t *testing.T) {
 				cfg.SiteURL = "http://localhost:8065"
 				cfg.AuthToken = "authToken"
 				cfg.CallID = "callID"
-				cfg.ThreadID = "threadID"
+				cfg.PostID = "postID"
 				cfg.RecordingID = "recordingID"
 
 				return cfg
@@ -51,8 +51,8 @@ func TestGetEnvFromConfig(t *testing.T) {
 					Value: "callID",
 				},
 				{
-					Name:  "THREAD_ID",
-					Value: "threadID",
+					Name:  "POST_ID",
+					Value: "postID",
 				},
 				{
 					Name:  "RECORDING_ID",
@@ -92,7 +92,7 @@ func TestGetEnvFromConfig(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			env := getEnvFromConfig(tc.cfg)
+			env := getEnvFromJobConfig(tc.cfg)
 			require.ElementsMatch(t, tc.env, env)
 		})
 	}
