@@ -37,6 +37,11 @@ max_concurrent_jobs = 2
 # The supported units of time are "m" (minutes), "h" (hours) and "d" (days).
 failed_jobs_retention_time = "30d"
 
+# Kubernetes API optionally supports definining resource limits and requests on
+# a per job type basis. Example:
+#[jobs.kubernetes]
+#jobs_resource_requirements = '{"transcribing": {"limits": {"cpu": "2000m"}}, "recording": {"limits": {"cpu": "500"}}}'
+
 [logger]
 # A boolean controlling whether to log to the console.
 enable_console = true

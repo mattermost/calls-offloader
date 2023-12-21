@@ -4,6 +4,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -39,9 +41,27 @@ const (
 	transcribingJobPrefix = "calls-transcriber"
 )
 
+type JobsResourceRequirements map[job.Type]corev1.ResourceRequirements
+
+// Custom decoders to support passing JSON from both TOML config and env
+// variable.
+
+func (r *JobsResourceRequirements) Decode(data string) error {
+	return yaml.NewYAMLOrJSONDecoder(bytes.NewBuffer([]byte(data)), 0).Decode(r)
+}
+
+func (r *JobsResourceRequirements) UnmarshalTOML(data interface{}) error {
+	js, ok := data.(string)
+	if !ok {
+		return fmt.Errorf("invalid data found")
+	}
+	return yaml.NewYAMLOrJSONDecoder(bytes.NewBuffer([]byte(js)), 0).Decode(r)
+}
+
 type JobServiceConfig struct {
-	MaxConcurrentJobs       int
-	FailedJobsRetentionTime time.Duration
+	MaxConcurrentJobs        int
+	FailedJobsRetentionTime  time.Duration
+	JobsResourceRequirements JobsResourceRequirements `toml:"jobs_resource_requirements"`
 }
 
 func (c JobServiceConfig) IsValid() error {
@@ -243,7 +263,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 									MountPath: k8sVolumePath,
 								},
 							},
-							Env: env,
+							Env:       env,
+							Resources: s.cfg.JobsResourceRequirements[cfg.Type],
 						},
 					},
 					Volumes: []corev1.Volume{
