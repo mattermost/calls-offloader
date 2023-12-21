@@ -6,6 +6,7 @@ package service
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/docker"
@@ -29,15 +30,15 @@ func NewJobService(cfg JobsConfig, log mlog.LoggerIFace) (JobService, error) {
 
 	switch cfg.APIType {
 	case JobAPITypeDocker:
-		return docker.NewJobService(log, docker.JobServiceConfig{
-			MaxConcurrentJobs:       cfg.MaxConcurrentJobs,
-			FailedJobsRetentionTime: cfg.FailedJobsRetentionTime,
-		})
+		cfg.Docker.MaxConcurrentJobs = cfg.MaxConcurrentJobs
+		cfg.Docker.FailedJobsRetentionTime = time.Duration(cfg.FailedJobsRetentionTime)
+		log.Info("creating new job service", mlog.Any("apiType", cfg.APIType), mlog.String("config", fmt.Sprintf("%+v", cfg.Docker)))
+		return docker.NewJobService(log, cfg.Docker)
 	case JobAPITypeKubernetes:
-		return kubernetes.NewJobService(log, kubernetes.JobServiceConfig{
-			MaxConcurrentJobs:       cfg.MaxConcurrentJobs,
-			FailedJobsRetentionTime: cfg.FailedJobsRetentionTime,
-		})
+		cfg.Kubernetes.MaxConcurrentJobs = cfg.MaxConcurrentJobs
+		cfg.Kubernetes.FailedJobsRetentionTime = time.Duration(cfg.FailedJobsRetentionTime)
+		log.Info("creating new job service", mlog.Any("apiType", cfg.APIType), mlog.String("config", fmt.Sprintf("%+v", cfg.Kubernetes)))
+		return kubernetes.NewJobService(log, cfg.Kubernetes)
 	default:
 		return nil, fmt.Errorf("%s API is not implemeneted", cfg.APIType)
 	}

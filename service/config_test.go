@@ -84,7 +84,7 @@ func TestParseFromEnv(t *testing.T) {
 		var cfg Config
 		err := cfg.ParseFromEnv()
 		require.NoError(t, err)
-		require.Equal(t, time.Hour*24, cfg.Jobs.FailedJobsRetentionTime)
+		require.Equal(t, RetentionTime(time.Hour*24), cfg.Jobs.FailedJobsRetentionTime)
 	})
 
 	t.Run("override", func(t *testing.T) {

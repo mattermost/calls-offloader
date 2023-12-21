@@ -12,6 +12,7 @@ import (
 	"github.com/mattermost/calls-offloader/public"
 	"github.com/mattermost/calls-offloader/service/api"
 	"github.com/mattermost/calls-offloader/service/auth"
+	"github.com/mattermost/calls-offloader/service/docker"
 
 	"github.com/stretchr/testify/require"
 )
@@ -86,6 +87,9 @@ func MakeDefaultCfg(tb testing.TB) *Config {
 		Jobs: JobsConfig{
 			APIType:           JobAPITypeDocker,
 			MaxConcurrentJobs: 2,
+			Docker: docker.JobServiceConfig{
+				MaxConcurrentJobs: 2,
+			},
 		},
 		Logger: logger.Config{
 			EnableConsole: true,

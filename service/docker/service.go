@@ -49,6 +49,18 @@ type JobServiceConfig struct {
 	FailedJobsRetentionTime time.Duration
 }
 
+func (c JobServiceConfig) IsValid() error {
+	if c.MaxConcurrentJobs < 0 {
+		return fmt.Errorf("invalid MaxConcurrentJobs value: should be positive")
+	}
+
+	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
+		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
+	}
+
+	return nil
+}
+
 type JobService struct {
 	cfg JobServiceConfig
 	log mlog.LoggerIFace
@@ -261,7 +273,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
-	if len(containers) >= s.cfg.MaxConcurrentJobs {
+	if s.cfg.MaxConcurrentJobs > 0 && len(containers) >= s.cfg.MaxConcurrentJobs {
 		if !devMode {
 			return job.Job{}, fmt.Errorf("max concurrent jobs reached")
 		}
