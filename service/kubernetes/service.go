@@ -36,15 +36,10 @@ const (
 	k8sVolumePath         = "/data"
 )
 
-const (
-	recordingJobPrefix    = "calls-recorder"
-	transcribingJobPrefix = "calls-transcriber"
-)
+// Type alias and custom decoders to support passing JSON from both TOML config and env
+// variable.
 
 type JobsResourceRequirements map[job.Type]corev1.ResourceRequirements
-
-// Custom decoders to support passing JSON from both TOML config and env
-// variable.
 
 func (r *JobsResourceRequirements) Decode(data string) error {
 	return yaml.NewYAMLOrJSONDecoder(bytes.NewBuffer([]byte(data)), 0).Decode(r)
@@ -166,7 +161,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		jobCfg.FromMap(cfg.InputData)
 		jobCfg.SetDefaults()
 		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
-		jobPrefix = recordingJobPrefix
+		jobPrefix = job.RecordingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
 		env = append(env, getEnvFromJobConfig(jobCfg)...)
 		initContainers = []corev1.Container{
@@ -191,7 +186,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		jobCfg.FromMap(cfg.InputData)
 		jobCfg.SetDefaults()
 		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
-		jobPrefix = transcribingJobPrefix
+		jobPrefix = job.TranscribingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
 		env = append(env, getEnvFromJobConfig(jobCfg)...)
 	}

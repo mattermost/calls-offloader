@@ -40,7 +40,7 @@ failed_jobs_retention_time = "30d"
 # Kubernetes API optionally supports definining resource limits and requests on
 # a per job type basis. Example:
 #[jobs.kubernetes]
-#jobs_resource_requirements = '{"transcribing": {"limits": {"cpu": "2000m"}}, "recording": {"limits": {"cpu": "500"}}}'
+#jobs_resource_requirements = '{"transcribing":{"limits":{"cpu":"4000m"},"requests":{"cpu":"2000m"}},"recording":{"limits":{"cpu":"2000m"},"requests":{"cpu":"1000m"}}}'
 
 [logger]
 # A boolean controlling whether to log to the console.

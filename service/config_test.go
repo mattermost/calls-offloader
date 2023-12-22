@@ -4,9 +4,16 @@
 package service
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/mattermost/calls-offloader/public/job"
+	"github.com/mattermost/calls-offloader/service/kubernetes"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/stretchr/testify/require"
 )
@@ -96,5 +103,52 @@ func TestParseFromEnv(t *testing.T) {
 		err := cfg.ParseFromEnv()
 		require.NoError(t, err)
 		require.Equal(t, JobAPITypeDocker, cfg.Jobs.APIType)
+	})
+
+	t.Run("kubernetes.JobsResourceRequirements", func(t *testing.T) {
+		requirements := make(kubernetes.JobsResourceRequirements)
+
+		t.Run("empty", func(t *testing.T) {
+			js, err := json.Marshal(requirements)
+			require.NoError(t, err)
+
+			os.Setenv("JOBS_KUBERNETES_JOBSRESOURCEREQUIREMENTS", string(js))
+			defer os.Unsetenv("JOBS_KUBERNETES_JOBSRESOURCEREQUIREMENTS")
+
+			var cfg Config
+			err = cfg.ParseFromEnv()
+			require.NoError(t, err)
+			require.Equal(t, requirements, cfg.Jobs.Kubernetes.JobsResourceRequirements)
+		})
+
+		t.Run("defined", func(t *testing.T) {
+			requirements[job.TypeRecording] = corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					"cpu": resource.MustParse("1"),
+				},
+				Requests: corev1.ResourceList{
+					"cpu": resource.MustParse("1"),
+				},
+			}
+			requirements[job.TypeTranscribing] = corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					"cpu": resource.MustParse("1"),
+				},
+				Requests: corev1.ResourceList{
+					"cpu": resource.MustParse("1"),
+				},
+			}
+
+			js, err := json.Marshal(requirements)
+			require.NoError(t, err)
+
+			os.Setenv("JOBS_KUBERNETES_JOBSRESOURCEREQUIREMENTS", string(js))
+			defer os.Unsetenv("JOBS_KUBERNETES_JOBSRESOURCEREQUIREMENTS")
+
+			var cfg Config
+			err = cfg.ParseFromEnv()
+			require.NoError(t, err)
+			require.Equal(t, requirements, cfg.Jobs.Kubernetes.JobsResourceRequirements)
+		})
 	})
 }

@@ -34,11 +34,6 @@ const (
 	dockerVolumePath       = "/data"
 )
 
-const (
-	recordingJobPrefix    = "calls-recorder"
-	transcribingJobPrefix = "calls-transcriber"
-)
-
 var (
 	dockerStopTimeout          = 5 * time.Minute
 	dockerRetentionJobInterval = time.Minute
@@ -292,13 +287,13 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		var jobData recorder.RecorderConfig
 		jobData.FromMap(cfg.InputData)
 		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
-		jobPrefix = recordingJobPrefix
+		jobPrefix = job.RecordingJobPrefix
 		env = append(env, jobData.ToEnv()...)
 	case job.TypeTranscribing:
 		var jobData transcriber.CallTranscriberConfig
 		jobData.FromMap(cfg.InputData)
 		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
-		jobPrefix = transcribingJobPrefix
+		jobPrefix = job.TranscribingJobPrefix
 		env = append(env, jobData.ToEnv()...)
 	}
 
