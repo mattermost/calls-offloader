@@ -36,6 +36,9 @@ max_concurrent_jobs = 2
 # completion. A zero value means keeping failed jobs indefinitely.
 # The supported units of time are "m" (minutes), "h" (hours) and "d" (days).
 failed_jobs_retention_time = "30d"
+# The image registry to use to fetch job runners. Defaults to the public
+# Mattermost Docker registry (https://hub.docker.com/u/mattermost).
+image_registry = "mattermost"
 
 # Kubernetes API optionally supports definining resource limits and requests on
 # a per job type basis. Example:

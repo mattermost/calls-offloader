@@ -32,11 +32,13 @@ func NewJobService(cfg JobsConfig, log mlog.LoggerIFace) (JobService, error) {
 	case JobAPITypeDocker:
 		cfg.Docker.MaxConcurrentJobs = cfg.MaxConcurrentJobs
 		cfg.Docker.FailedJobsRetentionTime = time.Duration(cfg.FailedJobsRetentionTime)
+		cfg.Docker.ImageRegistry = cfg.ImageRegistry
 		log.Info("creating new job service", mlog.Any("apiType", cfg.APIType), mlog.String("config", fmt.Sprintf("%+v", cfg.Docker)))
 		return docker.NewJobService(log, cfg.Docker)
 	case JobAPITypeKubernetes:
 		cfg.Kubernetes.MaxConcurrentJobs = cfg.MaxConcurrentJobs
 		cfg.Kubernetes.FailedJobsRetentionTime = time.Duration(cfg.FailedJobsRetentionTime)
+		cfg.Kubernetes.ImageRegistry = cfg.ImageRegistry
 		log.Info("creating new job service", mlog.Any("apiType", cfg.APIType), mlog.String("config", fmt.Sprintf("%+v", cfg.Kubernetes)))
 		return kubernetes.NewJobService(log, cfg.Kubernetes)
 	default:

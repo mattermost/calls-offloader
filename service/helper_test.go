@@ -10,6 +10,7 @@ import (
 
 	"github.com/mattermost/calls-offloader/logger"
 	"github.com/mattermost/calls-offloader/public"
+	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/api"
 	"github.com/mattermost/calls-offloader/service/auth"
 	"github.com/mattermost/calls-offloader/service/docker"
@@ -87,6 +88,7 @@ func MakeDefaultCfg(tb testing.TB) *Config {
 		Jobs: JobsConfig{
 			APIType:           JobAPITypeDocker,
 			MaxConcurrentJobs: 2,
+			ImageRegistry:     job.ImageRegistryDefault,
 			Docker: docker.JobServiceConfig{
 				MaxConcurrentJobs: 2,
 			},

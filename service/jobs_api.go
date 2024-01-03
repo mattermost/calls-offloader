@@ -36,7 +36,7 @@ func (s *Service) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := cfg.IsValid(); err != nil {
+	if err := cfg.IsValid(s.cfg.Jobs.ImageRegistry); err != nil {
 		data.err = err.Error()
 		data.code = http.StatusBadRequest
 		return
@@ -212,7 +212,7 @@ func (s *Service) handleInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := cfg.IsValid(); err != nil {
+	if err := cfg.IsValid(s.cfg.Jobs.ImageRegistry); err != nil {
 		data.err = "invalid job service config: " + err.Error()
 		data.code = http.StatusBadRequest
 		return
