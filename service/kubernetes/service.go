@@ -56,6 +56,7 @@ func (r *JobsResourceRequirements) UnmarshalTOML(data interface{}) error {
 type JobServiceConfig struct {
 	MaxConcurrentJobs        int
 	FailedJobsRetentionTime  time.Duration
+	ImageRegistry            string
 	JobsResourceRequirements JobsResourceRequirements `toml:"jobs_resource_requirements"`
 }
 
@@ -124,7 +125,7 @@ func (s *JobService) Init(_ job.ServiceConfig) error {
 }
 
 func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error) {
-	if err := cfg.IsValid(); err != nil {
+	if err := cfg.IsValid(s.cfg.ImageRegistry); err != nil {
 		return job.Job{}, fmt.Errorf("invalid job config: %w", err)
 	}
 

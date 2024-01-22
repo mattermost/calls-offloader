@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mattermost/calls-offloader/logger"
+	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/api"
 	"github.com/mattermost/calls-offloader/service/auth"
 	"github.com/mattermost/calls-offloader/service/docker"
@@ -96,6 +97,7 @@ type JobsConfig struct {
 	APIType                 JobAPIType                  `toml:"api_type"`
 	MaxConcurrentJobs       int                         `toml:"max_concurrent_jobs"`
 	FailedJobsRetentionTime RetentionTime               `toml:"failed_jobs_retention_time" ignored:"true"`
+	ImageRegistry           string                      `toml:"image_registry"`
 	Kubernetes              kubernetes.JobServiceConfig `toml:"kubernetes"`
 	Docker                  docker.JobServiceConfig     `toml:"docker"`
 }
@@ -194,6 +196,7 @@ func (c *Config) SetDefaults() {
 	c.Store.DataSource = "/tmp/calls-offloader-db"
 	c.Jobs.APIType = JobAPITypeDocker
 	c.Jobs.MaxConcurrentJobs = 2
+	c.Jobs.ImageRegistry = job.ImageRegistryDefault
 	c.Logger.EnableConsole = true
 	c.Logger.ConsoleJSON = false
 	c.Logger.ConsoleLevel = "INFO"

@@ -24,6 +24,7 @@ func TestJobConfigIsValid(t *testing.T) {
 	tcs := []struct {
 		name          string
 		cfg           Config
+		registry      string
 		expectedError string
 	}{
 		{
@@ -36,7 +37,16 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type: TypeRecording,
 			},
-			expectedError: "invalid Runner value: should not be empty",
+			registry:      ImageRegistryDefault,
+			expectedError: "invalid Runner value: runner should not be empty",
+		},
+		{
+			name: "empty registry",
+			cfg: Config{
+				Type:   TypeRecording,
+				Runner: "testrepo/calls-recorder:v0.1.0",
+			},
+			expectedError: "invalid Runner value: registry should not be empty",
 		},
 		{
 			name: "invalid runner",
@@ -44,6 +54,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				Type:   TypeRecording,
 				Runner: "testrepo/calls-recorder:v0.1.0",
 			},
+			registry:      ImageRegistryDefault,
 			expectedError: `invalid Runner value: failed to validate runner "testrepo/calls-recorder:v0.1.0"`,
 		},
 		{
@@ -52,6 +63,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				Type:   TypeRecording,
 				Runner: "testrepo/calls-recorder@sha256:abcde",
 			},
+			registry:      ImageRegistryDefault,
 			expectedError: `invalid Runner value: failed to validate runner "testrepo/calls-recorder@sha256:abcde"`,
 		},
 		{
@@ -62,6 +74,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: -1,
 			},
+			registry:      ImageRegistryDefault,
 			expectedError: "invalid MaxDurationSec value: should be positive",
 		},
 		{
@@ -71,6 +84,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
 				MaxDurationSec: 60,
 			},
+			registry:      ImageRegistryDefault,
 			expectedError: "invalid Type value: \"invalid\"",
 		},
 		{
@@ -80,7 +94,19 @@ func TestJobConfigIsValid(t *testing.T) {
 				Runner:    "mattermost/calls-recorder:v0.1.0",
 				InputData: recorderCfg.ToMap(),
 			},
+			registry:      ImageRegistryDefault,
 			expectedError: fmt.Sprintf("invalid Runner value: actual version (0.1.0) is lower than minimum supported version (%s)", MinSupportedRecorderVersion),
+		},
+		{
+			name: "invalid registry",
+			cfg: Config{
+				Type:           TypeRecording,
+				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
+				InputData:      recorderCfg.ToMap(),
+				MaxDurationSec: 60,
+			},
+			registry:      "custom",
+			expectedError: fmt.Sprintf("invalid Runner value: failed to validate runner \"mattermost/calls-recorder:v%s\"", MinSupportedRecorderVersion),
 		},
 		{
 			name: "valid",
@@ -90,6 +116,7 @@ func TestJobConfigIsValid(t *testing.T) {
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
+			registry: ImageRegistryDefault,
 		},
 		{
 			name: "valid daily",
@@ -99,12 +126,23 @@ func TestJobConfigIsValid(t *testing.T) {
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
+			registry: ImageRegistryDefault,
+		},
+		{
+			name: "valid, non default registry",
+			cfg: Config{
+				Type:           TypeRecording,
+				Runner:         "custom/calls-recorder:v" + MinSupportedRecorderVersion,
+				InputData:      recorderCfg.ToMap(),
+				MaxDurationSec: 60,
+			},
+			registry: "custom",
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.cfg.IsValid()
+			err := tc.cfg.IsValid(tc.registry)
 			if tc.expectedError == "" {
 				require.NoError(t, err)
 			} else {
@@ -138,7 +176,7 @@ func TestServiceConfigIsValid(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.cfg.IsValid()
+			err := tc.cfg.IsValid(ImageRegistryDefault)
 			if tc.err == "" {
 				require.NoError(t, err)
 			} else {

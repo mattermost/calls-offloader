@@ -42,6 +42,7 @@ var (
 type JobServiceConfig struct {
 	MaxConcurrentJobs       int
 	FailedJobsRetentionTime time.Duration
+	ImageRegistry           string
 }
 
 func (c JobServiceConfig) IsValid() error {
@@ -240,7 +241,7 @@ func (s *JobService) updateJobRunner(runner string) error {
 }
 
 func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, error) {
-	if err := cfg.IsValid(); err != nil {
+	if err := cfg.IsValid(s.cfg.ImageRegistry); err != nil {
 		return job.Job{}, fmt.Errorf("invalid job config: %w", err)
 	}
 
