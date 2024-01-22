@@ -58,6 +58,7 @@ func (s *Server) Start() error {
 
 	s.log.Info("api: server is listening on " + s.listener.Addr().String())
 
+	startErrCh := make(chan error, 1)
 	go func() {
 		var err error
 		if s.cfg.TLS.Enable && s.cfg.TLS.CertFile != "" && s.cfg.TLS.CertKey != "" {
@@ -67,12 +68,21 @@ func (s *Server) Start() error {
 			s.log.Debug("api: serving plaintext")
 			err = s.srv.Serve(s.listener)
 		}
+
 		if err != nil && err != http.ErrServerClosed {
+			startErrCh <- err
 			s.log.Critical("error starting HTTP server", mlog.Err(err))
 		}
 	}()
 
-	return nil
+	// We wait for a second in order to return an error in case of failure to
+	// start the HTTP server.
+	select {
+	case err = <-startErrCh:
+	case <-time.After(time.Second):
+	}
+
+	return err
 }
 
 func (s *Server) Stop() error {
