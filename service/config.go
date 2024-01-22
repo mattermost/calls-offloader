@@ -13,6 +13,8 @@ import (
 	"github.com/mattermost/calls-offloader/logger"
 	"github.com/mattermost/calls-offloader/service/api"
 	"github.com/mattermost/calls-offloader/service/auth"
+	"github.com/mattermost/calls-offloader/service/docker"
+	"github.com/mattermost/calls-offloader/service/kubernetes"
 
 	"github.com/kelseyhightower/envconfig"
 )
@@ -78,10 +80,24 @@ const (
 	JobAPITypeKubernetes            = "kubernetes"
 )
 
+// Alias is needed to implement custom unmarshaler.
+type RetentionTime time.Duration
+
+func (rt *RetentionTime) UnmarshalText(data []byte) error {
+	d, err := parseRetentionTime(string(data))
+	if err != nil {
+		return err
+	}
+	*rt = RetentionTime(d)
+	return nil
+}
+
 type JobsConfig struct {
-	APIType                 JobAPIType    `toml:"api_type"`
-	MaxConcurrentJobs       int           `toml:"max_concurrent_jobs"`
-	FailedJobsRetentionTime time.Duration `toml:"failed_jobs_retention_time" ignored:"true"`
+	APIType                 JobAPIType                  `toml:"api_type"`
+	MaxConcurrentJobs       int                         `toml:"max_concurrent_jobs"`
+	FailedJobsRetentionTime RetentionTime               `toml:"failed_jobs_retention_time" ignored:"true"`
+	Kubernetes              kubernetes.JobServiceConfig `toml:"kubernetes"`
+	Docker                  docker.JobServiceConfig     `toml:"docker"`
 }
 
 // We need some custom parsing since duration doesn't support days.
@@ -110,42 +126,6 @@ func parseRetentionTime(val string) (time.Duration, error) {
 	return d, nil
 }
 
-func (c *JobsConfig) UnmarshalTOML(data interface{}) error {
-	if c == nil {
-		return fmt.Errorf("invalid nil pointer")
-	}
-
-	m, ok := data.(map[string]any)
-	if !ok {
-		return fmt.Errorf("invalid data type")
-	}
-
-	apiType, ok := m["api_type"].(string)
-	if !ok {
-		return fmt.Errorf("invalid api_type type")
-	}
-	c.APIType = JobAPIType(apiType)
-
-	maxConcurrentJobs, ok := m["max_concurrent_jobs"].(int64)
-	if !ok {
-		return fmt.Errorf("invalid max_concurrent_jobs type")
-	}
-	c.MaxConcurrentJobs = int(maxConcurrentJobs)
-
-	if val, ok := m["failed_jobs_retention_time"]; ok {
-		retentionTime, ok := val.(string)
-		if !ok {
-			return fmt.Errorf("invalid failed_jobs_retention_time type")
-		}
-
-		var err error
-		c.FailedJobsRetentionTime, err = parseRetentionTime(retentionTime)
-		return err
-	}
-
-	return nil
-}
-
 func (c JobsConfig) IsValid() error {
 	if c.APIType != JobAPITypeDocker && c.APIType != JobAPITypeKubernetes {
 		return fmt.Errorf("invalid APIType value: %s", c.APIType)
@@ -159,8 +139,15 @@ func (c JobsConfig) IsValid() error {
 		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be a positive duration")
 	}
 
-	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
+	if c.FailedJobsRetentionTime > 0 && time.Duration(c.FailedJobsRetentionTime) < time.Minute {
 		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
+	}
+
+	switch c.APIType {
+	case JobAPITypeDocker:
+		return c.Docker.IsValid()
+	case JobAPITypeKubernetes:
+		return c.Kubernetes.IsValid()
 	}
 
 	return nil
@@ -179,7 +166,7 @@ func (c *Config) ParseFromEnv() error {
 		if err != nil {
 			return fmt.Errorf("failed to parse FailedJobsRetentionTime: %w", err)
 		}
-		c.Jobs.FailedJobsRetentionTime = d
+		c.Jobs.FailedJobsRetentionTime = RetentionTime(d)
 	}
 
 	return envconfig.Process("", c)

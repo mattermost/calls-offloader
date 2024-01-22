@@ -34,11 +34,6 @@ const (
 	dockerVolumePath       = "/data"
 )
 
-const (
-	recordingJobPrefix    = "calls-recorder"
-	transcribingJobPrefix = "calls-transcriber"
-)
-
 var (
 	dockerStopTimeout          = 5 * time.Minute
 	dockerRetentionJobInterval = time.Minute
@@ -47,6 +42,18 @@ var (
 type JobServiceConfig struct {
 	MaxConcurrentJobs       int
 	FailedJobsRetentionTime time.Duration
+}
+
+func (c JobServiceConfig) IsValid() error {
+	if c.MaxConcurrentJobs < 0 {
+		return fmt.Errorf("invalid MaxConcurrentJobs value: should be positive")
+	}
+
+	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
+		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
+	}
+
+	return nil
 }
 
 type JobService struct {
@@ -261,7 +268,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to list containers: %w", err)
 	}
-	if len(containers) >= s.cfg.MaxConcurrentJobs {
+	if s.cfg.MaxConcurrentJobs > 0 && len(containers) >= s.cfg.MaxConcurrentJobs {
 		if !devMode {
 			return job.Job{}, fmt.Errorf("max concurrent jobs reached")
 		}
@@ -280,13 +287,13 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		var jobData recorder.RecorderConfig
 		jobData.FromMap(cfg.InputData)
 		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
-		jobPrefix = recordingJobPrefix
+		jobPrefix = job.RecordingJobPrefix
 		env = append(env, jobData.ToEnv()...)
 	case job.TypeTranscribing:
 		var jobData transcriber.CallTranscriberConfig
 		jobData.FromMap(cfg.InputData)
 		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
-		jobPrefix = transcribingJobPrefix
+		jobPrefix = job.TranscribingJobPrefix
 		env = append(env, jobData.ToEnv()...)
 	}
 

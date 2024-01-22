@@ -4,6 +4,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -34,14 +36,39 @@ const (
 	k8sVolumePath         = "/data"
 )
 
-const (
-	recordingJobPrefix    = "calls-recorder"
-	transcribingJobPrefix = "calls-transcriber"
-)
+// Type alias and custom decoders to support passing JSON from both TOML config and env
+// variable.
+
+type JobsResourceRequirements map[job.Type]corev1.ResourceRequirements
+
+func (r *JobsResourceRequirements) Decode(data string) error {
+	return yaml.NewYAMLOrJSONDecoder(bytes.NewBuffer([]byte(data)), 0).Decode(r)
+}
+
+func (r *JobsResourceRequirements) UnmarshalTOML(data interface{}) error {
+	js, ok := data.(string)
+	if !ok {
+		return fmt.Errorf("invalid data found")
+	}
+	return yaml.NewYAMLOrJSONDecoder(bytes.NewBuffer([]byte(js)), 0).Decode(r)
+}
 
 type JobServiceConfig struct {
-	MaxConcurrentJobs       int
-	FailedJobsRetentionTime time.Duration
+	MaxConcurrentJobs        int
+	FailedJobsRetentionTime  time.Duration
+	JobsResourceRequirements JobsResourceRequirements `toml:"jobs_resource_requirements"`
+}
+
+func (c JobServiceConfig) IsValid() error {
+	if c.MaxConcurrentJobs < 0 {
+		return fmt.Errorf("invalid MaxConcurrentJobs value: should be positive")
+	}
+
+	if c.FailedJobsRetentionTime > 0 && c.FailedJobsRetentionTime < time.Minute {
+		return fmt.Errorf("invalid FailedJobsRetentionTime value: should be at least one minute")
+	}
+
+	return nil
 }
 
 type JobService struct {
@@ -116,7 +143,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to list jobs: %w", err)
 	}
-	if activeJobs := getActiveJobs(jobList.Items); activeJobs >= s.cfg.MaxConcurrentJobs {
+	if activeJobs := getActiveJobs(jobList.Items); s.cfg.MaxConcurrentJobs > 0 && activeJobs >= s.cfg.MaxConcurrentJobs {
 		if !devMode {
 			return job.Job{}, fmt.Errorf("max concurrent jobs reached")
 		}
@@ -134,7 +161,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		jobCfg.FromMap(cfg.InputData)
 		jobCfg.SetDefaults()
 		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
-		jobPrefix = recordingJobPrefix
+		jobPrefix = job.RecordingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
 		env = append(env, getEnvFromJobConfig(jobCfg)...)
 		initContainers = []corev1.Container{
@@ -159,7 +186,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		jobCfg.FromMap(cfg.InputData)
 		jobCfg.SetDefaults()
 		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
-		jobPrefix = transcribingJobPrefix
+		jobPrefix = job.TranscribingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
 		env = append(env, getEnvFromJobConfig(jobCfg)...)
 	}
@@ -231,7 +258,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 									MountPath: k8sVolumePath,
 								},
 							},
-							Env: env,
+							Env:       env,
+							Resources: s.cfg.JobsResourceRequirements[cfg.Type],
 						},
 					},
 					Volumes: []corev1.Volume{
