@@ -67,6 +67,23 @@ func TestStartServer(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("invalid certificate", func(t *testing.T) {
+		cfg := Config{
+			ListenAddress: ":0",
+			TLS: TLSConfig{
+				Enable:   true,
+				CertFile: "../../testfiles/invalid_tls_test_cert.pem",
+				CertKey:  "../../testfiles/tls_test_key.pem",
+			},
+		}
+		s, err := NewServer(cfg, log)
+		require.NoError(t, err)
+		require.NotNil(t, s)
+
+		err = s.Start()
+		require.EqualError(t, err, "open ../../testfiles/invalid_tls_test_cert.pem: no such file or directory")
+	})
+
 	t.Run("tls", func(t *testing.T) {
 		cfg := Config{
 			ListenAddress: ":0",
