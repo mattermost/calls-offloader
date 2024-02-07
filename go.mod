@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattermost/calls-recorder v0.6.0
-	github.com/mattermost/calls-transcriber v0.1.9-0.20240206014500-17ed4f59b20c
+	github.com/mattermost/calls-transcriber v0.1.9-0.20240207195159-3f96d0ad8031
 	github.com/mattermost/mattermost/server/public v0.0.12
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.8.4
@@ -66,7 +66,7 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto v0.0.0-20231002182017-d307bd883b97 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231212172506-995d672761c0 // indirect
 	google.golang.org/grpc v1.60.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
