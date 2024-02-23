@@ -47,7 +47,7 @@ jobs:
       - name: Build image
         run: |
           eval $(minikube -p minikube docker-env) && \
-          make docker-build && \
+          make docker-build CI=false && \
           echo "docker_image=$(docker images --format '{{.Repository}}:{{.Tag}}' | head -n 1)" >> "$GITHUB_ENV"
         working-directory: ${{ github.workspace }}/${{ github.repository }}
       - name: Create pod
