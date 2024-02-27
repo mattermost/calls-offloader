@@ -10,7 +10,7 @@ import (
 	"runtime"
 )
 
-var dockerImageRE = regexp.MustCompile(`^mattermost\/(.+):v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$`)
+var dockerImageRE = regexp.MustCompile(`^mattermost\/(.+):v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-dev\d*)*$`)
 
 func getSiteURLForJob(siteURL string) string {
 	if os.Getenv("DEV_MODE") != "true" {
