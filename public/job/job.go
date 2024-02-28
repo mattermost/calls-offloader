@@ -79,11 +79,11 @@ func RunnerIsValid(runner, registry string) error {
 	}
 
 	recorderRunnerREs := []*regexp.Regexp{
-		regexp.MustCompile(fmt.Sprintf(`^%s/%s:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-dev)?$`, registry, RecordingJobPrefix)),
+		regexp.MustCompile(fmt.Sprintf(`^%s/%s:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-dev\d*)?$`, registry, RecordingJobPrefix)),
 		regexp.MustCompile(fmt.Sprintf(`^%s/%s-daily:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-dev$`, registry, RecordingJobPrefix)),
 	}
 	transcriberRunnerREs := []*regexp.Regexp{
-		regexp.MustCompile(fmt.Sprintf(`^%s/%s:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-dev)?$`, registry, TranscribingJobPrefix)),
+		regexp.MustCompile(fmt.Sprintf(`^%s/%s:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-dev\d*)?$`, registry, TranscribingJobPrefix)),
 		regexp.MustCompile(fmt.Sprintf(`^%s/%s-daily:v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-dev$`, registry, TranscribingJobPrefix)),
 	}
 
