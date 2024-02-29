@@ -129,6 +129,16 @@ func TestJobConfigIsValid(t *testing.T) {
 			registry: ImageRegistryDefault,
 		},
 		{
+			name: "valid -dev# build",
+			cfg: Config{
+				Type:           TypeRecording,
+				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion + "-dev29",
+				InputData:      recorderCfg.ToMap(),
+				MaxDurationSec: 60,
+			},
+			registry: ImageRegistryDefault,
+		},
+		{
 			name: "valid -dev build, transcriber",
 			cfg: Config{
 				Type:           TypeRecording,
@@ -139,10 +149,10 @@ func TestJobConfigIsValid(t *testing.T) {
 			registry: ImageRegistryDefault,
 		},
 		{
-			name: "valid daily",
+			name: "valid -dev# build, transcriber",
 			cfg: Config{
 				Type:           TypeRecording,
-				Runner:         "mattermost/calls-recorder-daily:v" + MinSupportedRecorderVersion + "-dev",
+				Runner:         "mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion + "-dev341",
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
