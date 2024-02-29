@@ -119,10 +119,40 @@ func TestJobConfigIsValid(t *testing.T) {
 			registry: ImageRegistryDefault,
 		},
 		{
-			name: "valid daily",
+			name: "valid -dev build",
 			cfg: Config{
 				Type:           TypeRecording,
-				Runner:         "mattermost/calls-recorder-daily:v" + MinSupportedRecorderVersion + "-dev",
+				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion + "-dev",
+				InputData:      recorderCfg.ToMap(),
+				MaxDurationSec: 60,
+			},
+			registry: ImageRegistryDefault,
+		},
+		{
+			name: "valid -dev# build",
+			cfg: Config{
+				Type:           TypeRecording,
+				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion + "-dev29",
+				InputData:      recorderCfg.ToMap(),
+				MaxDurationSec: 60,
+			},
+			registry: ImageRegistryDefault,
+		},
+		{
+			name: "valid -dev build, transcriber",
+			cfg: Config{
+				Type:           TypeRecording,
+				Runner:         "mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion + "-dev",
+				InputData:      recorderCfg.ToMap(),
+				MaxDurationSec: 60,
+			},
+			registry: ImageRegistryDefault,
+		},
+		{
+			name: "valid -dev# build, transcriber",
+			cfg: Config{
+				Type:           TypeRecording,
+				Runner:         "mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion + "-dev341",
 				InputData:      recorderCfg.ToMap(),
 				MaxDurationSec: 60,
 			},
@@ -169,6 +199,15 @@ func TestServiceConfigIsValid(t *testing.T) {
 				Runners: []string{
 					"mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
 					"mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion,
+				},
+			},
+		},
+		{
+			name: "valid -dev config",
+			cfg: ServiceConfig{
+				Runners: []string{
+					"mattermost/calls-recorder:v" + MinSupportedRecorderVersion + "-dev",
+					"mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion + "-dev",
 				},
 			},
 		},
