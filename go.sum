@@ -539,6 +539,8 @@ github.com/mattermost/calls-recorder v0.6.0 h1:ZDaaUseWoUyAZXwBEIFPhkhHbzD+GpBSY
 github.com/mattermost/calls-recorder v0.6.0/go.mod h1:v/52mE+wIXGJE7ZflpAkoyGd56hbVgC9ZuEBBaRd8KU=
 github.com/mattermost/calls-transcriber v0.1.9-0.20240207195159-3f96d0ad8031 h1:i1+vxipBtHo0zQT+ABen5WiC6q3KD3cPSJ/RkvwF3L4=
 github.com/mattermost/calls-transcriber v0.1.9-0.20240207195159-3f96d0ad8031/go.mod h1:FHCpAazodwWFT8da1Z3Sg/TOJu5M0h5ShWomMAamVmA=
+github.com/mattermost/calls-transcriber v0.2.2-dev.0.20240322211857-e206786e4829 h1:zOlhYHAYQd5oGywQV9aTZP0oSNDlqe2k41VI2BWKngM=
+github.com/mattermost/calls-transcriber v0.2.2-dev.0.20240322211857-e206786e4829/go.mod h1:Wm69rspNcI2/o2aX4IfnReYsPC2T5J328hnd85mgXX4=
 github.com/mattermost/logr/v2 v2.0.21 h1:CMHsP+nrbRlEC4g7BwOk1GAnMtHkniFhlSQPXy52be4=
 github.com/mattermost/logr/v2 v2.0.21/go.mod h1:kZkB/zqKL9e+RY5gB3vGpsyenC+TpuiOenjMkvJJbzc=
 github.com/mattermost/mattermost/server/public v0.0.12 h1:iunc9q4/XkArOrndEUn73uFw6v9TOEXEtp6Nm6Iv218=
