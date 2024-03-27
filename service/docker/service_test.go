@@ -14,8 +14,6 @@ import (
 
 	"github.com/mattermost/calls-offloader/public/job"
 
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
-
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/stretchr/testify/require"
@@ -75,20 +73,18 @@ func TestCreateJob(t *testing.T) {
 	os.Setenv("TEST_MODE", "true")
 	defer os.Unsetenv("TEST_MODE")
 
-	var recCfg recorder.RecorderConfig
-	recCfg.SetDefaults()
-	recCfg.SiteURL = "http://localhost:8065"
-	recCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	recCfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
-	recCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
-	recCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
-
 	stopCh := make(chan struct{})
 	job, err := jobService.CreateJob(job.Config{
 		Type:           job.TypeRecording,
 		Runner:         testRunner,
 		MaxDurationSec: 60,
-		InputData:      recCfg.ToMap(),
+		InputData: job.InputData{
+			"site_url":     "http://localhost:8065",
+			"call_id":      "8w8jorhr7j83uqr6y1st894hqe",
+			"post_id":      "udzdsg7dwidbzcidx5khrf8nee",
+			"auth_token":   "qj75unbsef83ik9p7ueypb6iyw",
+			"recording_id": "dtomsek53i8eukrhnb31ugyhea",
+		},
 	}, func(_ job.Job, success bool) error {
 		require.True(t, success)
 		close(stopCh)
@@ -122,14 +118,6 @@ func TestFailedJobsRetention(t *testing.T) {
 	os.Setenv("TEST_MODE", "true")
 	defer os.Unsetenv("TEST_MODE")
 
-	var recCfg recorder.RecorderConfig
-	recCfg.SetDefaults()
-	recCfg.SiteURL = "http://localhost:8065"
-	recCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	recCfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
-	recCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
-	recCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
-
 	interval := dockerRetentionJobInterval
 	dockerRetentionJobInterval = time.Second
 	defer func() {
@@ -148,7 +136,13 @@ func TestFailedJobsRetention(t *testing.T) {
 		Type:           job.TypeRecording,
 		Runner:         testRunner,
 		MaxDurationSec: 60,
-		InputData:      recCfg.ToMap(),
+		InputData: job.InputData{
+			"site_url":     "http://localhost:8065",
+			"call_id":      "8w8jorhr7j83uqr6y1st894hqe",
+			"post_id":      "udzdsg7dwidbzcidx5khrf8nee",
+			"auth_token":   "qj75unbsef83ik9p7ueypb6iyw",
+			"recording_id": "dtomsek53i8eukrhnb31ugyhea",
+		},
 	}, func(_ job.Job, success bool) error {
 		require.True(t, success)
 		close(stopCh)

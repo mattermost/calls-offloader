@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mattermost/calls-offloader/public/job"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -42,13 +44,9 @@ func newBool(val bool) *bool {
 	return p
 }
 
-type Mapper interface {
-	ToMap() map[string]any
-}
-
-func getEnvFromJobConfig(cfg Mapper) []corev1.EnvVar {
+func getEnvFromJobInputData(data job.InputData) []corev1.EnvVar {
 	var env []corev1.EnvVar
-	for k, v := range cfg.ToMap() {
+	for k, v := range data {
 		env = append(env, corev1.EnvVar{
 			Name:  strings.ToUpper(k),
 			Value: fmt.Sprintf("%v", v),

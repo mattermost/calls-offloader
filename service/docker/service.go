@@ -15,9 +15,6 @@ import (
 	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/random"
 
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
-	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
-
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/docker/docker/api/types"
@@ -281,22 +278,16 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		return job.Job{}, fmt.Errorf("failed to update job runner: %w", err)
 	}
 
-	var env []string
 	var jobPrefix string
 	switch cfg.Type {
 	case job.TypeRecording:
-		var jobData recorder.RecorderConfig
-		jobData.FromMap(cfg.InputData)
-		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
 		jobPrefix = job.RecordingJobPrefix
-		env = append(env, jobData.ToEnv()...)
 	case job.TypeTranscribing:
-		var jobData transcriber.CallTranscriberConfig
-		jobData.FromMap(cfg.InputData)
-		jobData.SiteURL = getSiteURLForJob(jobData.SiteURL)
 		jobPrefix = job.TranscribingJobPrefix
-		env = append(env, jobData.ToEnv()...)
 	}
+
+	cfg.InputData.SetSiteURL(getSiteURLForJob(cfg.InputData.GetSiteURL()))
+	env := cfg.InputData.ToEnv()
 
 	var networkMode container.NetworkMode
 	if devMode {

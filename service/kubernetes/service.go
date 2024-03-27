@@ -14,9 +14,6 @@ import (
 	"github.com/mattermost/calls-offloader/public/job"
 	"github.com/mattermost/calls-offloader/service/random"
 
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
-	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
-
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -158,13 +155,10 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	var initContainers []corev1.Container
 	switch cfg.Type {
 	case job.TypeRecording:
-		var jobCfg recorder.RecorderConfig
-		jobCfg.FromMap(cfg.InputData)
-		jobCfg.SetDefaults()
-		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
+		cfg.InputData.SetSiteURL(getSiteURLForJob(cfg.InputData.GetSiteURL()))
 		jobPrefix = job.RecordingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
-		env = append(env, getEnvFromJobConfig(jobCfg)...)
+		env = append(env, getEnvFromJobInputData(cfg.InputData)...)
 		initContainers = []corev1.Container{
 			{
 				Name:            jobID + "-init",
@@ -183,13 +177,10 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 			},
 		}
 	case job.TypeTranscribing:
-		var jobCfg transcriber.CallTranscriberConfig
-		jobCfg.FromMap(cfg.InputData)
-		jobCfg.SetDefaults()
-		jobCfg.SiteURL = getSiteURLForJob(jobCfg.SiteURL)
+		cfg.InputData.SetSiteURL(getSiteURLForJob(cfg.InputData.GetSiteURL()))
 		jobPrefix = job.TranscribingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
-		env = append(env, getEnvFromJobConfig(jobCfg)...)
+		env = append(env, getEnvFromJobInputData(cfg.InputData)...)
 	}
 
 	var hostNetwork bool
