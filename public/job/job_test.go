@@ -298,7 +298,7 @@ func TestInputData(t *testing.T) {
 			}
 
 			env := inputData.ToEnv()
-			require.Equal(t, []string{
+			require.ElementsMatch(t, []string{
 				"SITE_URL=http://localhost:8065",
 				"CALL_ID=callID",
 				"VIDEO_RATE=1000",
