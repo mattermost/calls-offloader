@@ -9,8 +9,6 @@ require (
 	github.com/docker/docker v20.10.9+incompatible
 	github.com/gorilla/mux v1.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/mattermost/calls-recorder v0.6.0
-	github.com/mattermost/calls-transcriber v0.1.9-0.20240207195159-3f96d0ad8031
 	github.com/mattermost/mattermost/server/public v0.0.12
 	github.com/pborman/uuid v1.2.1
 	github.com/stretchr/testify v1.8.4

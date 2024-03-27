@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
-	transcriber "github.com/mattermost/calls-transcriber/cmd/transcriber/config"
+	"strings"
 )
 
 type Type string
@@ -25,6 +23,8 @@ const (
 	RecordingJobPrefix             = "calls-recorder"
 	TranscribingJobPrefix          = "calls-transcriber"
 	ImageRegistryDefault           = "mattermost"
+
+	InputDataSiteURLKey = "site_url"
 )
 
 type ServiceConfig struct {
@@ -39,11 +39,36 @@ type Job struct {
 	OutputData map[string]any `json:"output_data,omitempty"`
 }
 
+type InputData map[string]any
+
+func (d InputData) GetSiteURL() string {
+	if d == nil {
+		return ""
+	}
+	siteURL, _ := d[InputDataSiteURLKey].(string)
+	return siteURL
+}
+
+func (d InputData) SetSiteURL(siteURL string) {
+	if d == nil {
+		return
+	}
+	d[InputDataSiteURLKey] = siteURL
+}
+
+func (d InputData) ToEnv() []string {
+	env := make([]string, 0, len(d))
+	for k, v := range d {
+		env = append(env, fmt.Sprintf("%s=%v", strings.ToUpper(k), v))
+	}
+	return env
+}
+
 type Config struct {
-	Type           Type           `json:"type"`
-	MaxDurationSec int64          `json:"max_duration_sec"`
-	Runner         string         `json:"runner"`
-	InputData      map[string]any `json:"input_data,omitempty"`
+	Type           Type      `json:"type"`
+	MaxDurationSec int64     `json:"max_duration_sec"`
+	Runner         string    `json:"runner"`
+	InputData      InputData `json:"input_data,omitempty"`
 }
 
 type StopCb func(job Job, success bool) error
@@ -115,20 +140,13 @@ func (c Config) IsValid(registry string) error {
 
 	switch c.Type {
 	case TypeRecording:
-		cfg := (&recorder.RecorderConfig{}).FromMap(c.InputData)
-		cfg.SetDefaults()
-		if err := cfg.IsValid(); err != nil {
-			return fmt.Errorf("failed to validate InputData: %w", err)
-		}
 	case TypeTranscribing:
-		cfg := (&transcriber.CallTranscriberConfig{}).FromMap(c.InputData)
-		cfg.SetDefaults()
-		if err := cfg.IsValid(); err != nil {
-			return fmt.Errorf("failed to validate InputData: %w", err)
-		}
 	default:
 		return fmt.Errorf("invalid Type value: %q", c.Type)
 	}
+
+	// Specific job config validation is deferred to the client side (e.g. plugin)
+	// and to job process itself in order to avoid coupling configs with this service.
 
 	return nil
 }

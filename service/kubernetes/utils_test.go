@@ -5,38 +5,40 @@ import (
 	"os"
 	"testing"
 
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
+	"github.com/mattermost/calls-offloader/public/job"
 
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetEnvFromJobConfig(t *testing.T) {
+func TestGetEnvFromJobInputData(t *testing.T) {
 	tcs := []struct {
 		name string
-		cfg  recorder.RecorderConfig
+		data job.InputData
 		env  []corev1.EnvVar
 	}{
 		{
-			name: "empty config",
-			cfg:  recorder.RecorderConfig{},
+			name: "empty data",
+			data: job.InputData{},
 			env:  []corev1.EnvVar(nil),
 		},
 		{
-			name: "valid config",
-			cfg: func() recorder.RecorderConfig {
-				var cfg recorder.RecorderConfig
-				cfg.SetDefaults()
-
-				cfg.SiteURL = "http://localhost:8065"
-				cfg.AuthToken = "authToken"
-				cfg.CallID = "callID"
-				cfg.PostID = "postID"
-				cfg.RecordingID = "recordingID"
-
-				return cfg
-			}(),
+			name: "valid data",
+			data: job.InputData{
+				"site_url":      "http://localhost:8065",
+				"auth_token":    "authToken",
+				"call_id":       "callID",
+				"post_id":       "postID",
+				"recording_id":  "recordingID",
+				"width":         1920,
+				"height":        1080,
+				"video_rate":    1500,
+				"audio_rate":    64,
+				"frame_rate":    30,
+				"video_preset":  "fast",
+				"output_format": "mp4",
+			},
 			env: []corev1.EnvVar{
 				{
 					Name:  "SITE_URL",
@@ -92,7 +94,7 @@ func TestGetEnvFromJobConfig(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			env := getEnvFromJobConfig(tc.cfg)
+			env := getEnvFromJobInputData(tc.data)
 			require.ElementsMatch(t, tc.env, env)
 		})
 	}

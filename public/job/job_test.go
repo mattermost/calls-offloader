@@ -7,19 +7,17 @@ import (
 	"fmt"
 	"testing"
 
-	recorder "github.com/mattermost/calls-recorder/cmd/recorder/config"
-
 	"github.com/stretchr/testify/require"
 )
 
 func TestJobConfigIsValid(t *testing.T) {
-	var recorderCfg recorder.RecorderConfig
-	recorderCfg.SetDefaults()
-	recorderCfg.SiteURL = "http://localhost:8065"
-	recorderCfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	recorderCfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
-	recorderCfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
-	recorderCfg.RecordingID = "dtomsek53i8eukrhnb31ugyhea"
+	inputData := InputData{
+		"site_url":     "http://localhost:8065",
+		"call_id":      "8w8jorhr7j83uqr6y1st894hqe",
+		"post_id":      "udzdsg7dwidbzcidx5khrf8nee",
+		"auth_token":   "qj75unbsef83ik9p7ueypb6iyw",
+		"recording_id": "dtomsek53i8eukrhnb31ugyhea",
+	}
 
 	tcs := []struct {
 		name          string
@@ -71,7 +69,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: -1,
 			},
 			registry:      ImageRegistryDefault,
@@ -92,7 +90,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:      TypeRecording,
 				Runner:    "mattermost/calls-recorder:v0.1.0",
-				InputData: recorderCfg.ToMap(),
+				InputData: inputData,
 			},
 			registry:      ImageRegistryDefault,
 			expectedError: fmt.Sprintf("invalid Runner value: actual version (0.1.0) is lower than minimum supported version (%s)", MinSupportedRecorderVersion),
@@ -102,7 +100,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: 60,
 			},
 			registry:      "custom",
@@ -113,7 +111,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion,
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: 60,
 			},
 			registry: ImageRegistryDefault,
@@ -123,7 +121,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion + "-dev",
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: 60,
 			},
 			registry: ImageRegistryDefault,
@@ -133,7 +131,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "mattermost/calls-recorder:v" + MinSupportedRecorderVersion + "-dev29",
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: 60,
 			},
 			registry: ImageRegistryDefault,
@@ -143,7 +141,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion + "-dev",
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: 60,
 			},
 			registry: ImageRegistryDefault,
@@ -153,7 +151,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "mattermost/calls-transcriber:v" + MinSupportedTranscriberVersion + "-dev341",
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: 60,
 			},
 			registry: ImageRegistryDefault,
@@ -163,7 +161,7 @@ func TestJobConfigIsValid(t *testing.T) {
 			cfg: Config{
 				Type:           TypeRecording,
 				Runner:         "custom/calls-recorder:v" + MinSupportedRecorderVersion,
-				InputData:      recorderCfg.ToMap(),
+				InputData:      inputData,
 				MaxDurationSec: 60,
 			},
 			registry: "custom",
@@ -223,4 +221,89 @@ func TestServiceConfigIsValid(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInputData(t *testing.T) {
+	t.Run("GetSiteURL", func(t *testing.T) {
+		t.Run("nil", func(t *testing.T) {
+			var inputData InputData
+			siteURL := inputData.GetSiteURL()
+			require.Empty(t, siteURL)
+		})
+
+		t.Run("missing", func(t *testing.T) {
+			inputData := InputData{}
+			siteURL := inputData.GetSiteURL()
+			require.Empty(t, siteURL)
+		})
+
+		t.Run("invalid type", func(t *testing.T) {
+			inputData := InputData{
+				"site_url": 45,
+			}
+			siteURL := inputData.GetSiteURL()
+			require.Empty(t, siteURL)
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			inputData := InputData{
+				"site_url": "http://localhost:8065",
+			}
+			siteURL := inputData.GetSiteURL()
+			require.Equal(t, "http://localhost:8065", siteURL)
+		})
+	})
+
+	t.Run("SetSiteURL", func(t *testing.T) {
+		t.Run("nil", func(t *testing.T) {
+			siteURL := "http://localhost:8065"
+			var inputData InputData
+			inputData.SetSiteURL(siteURL)
+			url := inputData.GetSiteURL()
+			require.Empty(t, url)
+		})
+
+		t.Run("set", func(t *testing.T) {
+			siteURL := "http://localhost:8065"
+			inputData := InputData{}
+			inputData.SetSiteURL(siteURL)
+			url := inputData.GetSiteURL()
+			require.Equal(t, siteURL, url)
+		})
+
+		t.Run("update", func(t *testing.T) {
+			siteURL := "http://localhost:8065"
+			inputData := InputData{
+				"site_url": 45,
+			}
+			inputData.SetSiteURL(siteURL)
+			url := inputData.GetSiteURL()
+			require.Equal(t, siteURL, url)
+		})
+	})
+
+	t.Run("ToEnv", func(t *testing.T) {
+		t.Run("nil", func(t *testing.T) {
+			var inputData InputData
+			env := inputData.ToEnv()
+			require.Empty(t, env)
+		})
+
+		t.Run("set", func(t *testing.T) {
+			inputData := InputData{
+				"site_url":      "http://localhost:8065",
+				"call_id":       "callID",
+				"video_rate":    1000,
+				"output_format": "format",
+			}
+
+			env := inputData.ToEnv()
+			require.Equal(t, []string{
+				"SITE_URL=http://localhost:8065",
+				"CALL_ID=callID",
+				"VIDEO_RATE=1000",
+				"OUTPUT_FORMAT=format",
+			}, env)
+		})
+	})
 }
