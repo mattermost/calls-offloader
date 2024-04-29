@@ -145,15 +145,15 @@ For the simultaneous calls, the second (and third) calls were started in differe
 
 ### Summary
 
-The `Small` model is not recommended for live captioning; currently it is too slow to deliver real time captions. Base provides better quality captions than Tiny, but Tiny is surprisingly capable. However, Tiny struggles with accents, muffled voices, and noise.
-Base requires at least 2 threads for real time captioning, and works best with 3 or 4 threads. Tiny is able to provide real-time captioning with 1 thread, but 2 threads are better.
+The `Small` model is not recommended for live captioning; currently it is too slow to deliver real time captions. `Base` provides better quality captions than `Tiny`, but `Tiny` is surprisingly capable. However, `Tin`y struggles with accents, muffled voices, and noise.
+`Base` requires at least 2 threads for real time captioning, and works best with 3 or 4 threads. `Tiny` is able to provide real-time captioning with 1 thread, but 2 threads are better.
 We recommend picking a model and thread count based on the number of simultaneous calls expected:
-- 1 call: Base with 4 threads
-- 2 calls: Base with 4 or 3 threads, or Tiny with 3 threads
-- 3 calls: Tiny with 3 or 2 threads
-- > 3 calls: Tiny with 2 or 1 threads, and consider horizontally scaling (see [Scalability](#Scalability)). 
+- 1 call: `Base` with 4 threads
+- 2 calls: `Base` with 4 or 3 threads, or `Tiny` with 3 threads
+- 3 calls: `Tin`y with 3 or 2 threads
+- more than 3 calls: `Tiny` with 2 or 1 threads, and consider horizontally scaling (see [Scalability](#Scalability)). 
 
-Note: The c7g.2xlarge performs better than the c7i.2xlarge, and will give breathing room for the recommendations above. 
+Note: The `c7g.2xlarge` performs better than the `c6i.2xlarge`, and will give breathing room for the recommendations above. 
 
 ## Scalability
 
