@@ -153,7 +153,8 @@ We recommend picking a model and thread count based on the number of simultaneou
 - 3 calls: `Tin`y with 3 or 2 threads
 - more than 3 calls: `Tiny` with 2 or 1 threads, and consider horizontally scaling (see [Scalability](#Scalability)). 
 
-Note: The `c7g.2xlarge` performs better than the `c6i.2xlarge`, and will give breathing room for the recommendations above. 
+Note: If the call transcriber is transcribing a previous call, the offloader's CPU usage will increase accordingly. E.g., if the call transcriber is given 4 threads and is transcribing a call, then the live captioning system will only have 4 threads available (on an 8 thread `c6i.2xlarge`).
+Note: The `c7g.2xlarge` performs better than the `c6i.2xlarge` and will give breathing room for the recommendations above. 
 
 ## Scalability
 
