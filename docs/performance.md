@@ -150,7 +150,7 @@ The `Small` model is not recommended for live captioning; currently it is too sl
 We recommend picking a model and thread count based on the number of simultaneous calls expected:
 - 1 call: `Base` with 4 threads
 - 2 calls: `Base` with 4 or 3 threads, or `Tiny` with 3 threads
-- 3 calls: `Tin`y with 3 or 2 threads
+- 3 calls: `Tiny` with 3 or 2 threads
 - more than 3 calls: `Tiny` with 2 or 1 threads, and consider horizontally scaling (see [Scalability](#Scalability)). 
 
 Note: If the call transcriber is transcribing a previous call, the offloader's CPU usage will increase accordingly. E.g., if the call transcriber is given 4 threads and is transcribing a call, then the live captioning system will only have 4 threads available (on an 8 thread `c6i.2xlarge`).
