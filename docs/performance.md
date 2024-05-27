@@ -140,7 +140,7 @@ Legend:
 
 ### Description of the methodology
 
-We used a 10 minute call between 4 participants. The call script can be found in the load testing subpackage of the calls repository (TODO: link when merged). The script includes moments where two participants talk over one another to provide a realistic stress-test of the live captioning system. Each participant's lines were sent to AWS Polly text-to-speech and then the audio was "said" on the call. The call's audio was processed and live captions were sent to all call participants, as it would be on a call between real people. At the moment we do not have a measure for quality or accuracy of the live transcriptions.
+We used a 10 minute call between 4 participants. The call script can be found in the load testing subpackage of the calls repository: [script for benchmarking](https://github.com/mattermost/mattermost-plugin-calls/blob/main/lt/scripts/script-for-benchmarking.txt). The script includes moments where two participants talk over one another to provide a realistic stress-test of the live captioning system. Each participant's lines were sent to AWS Polly text-to-speech and then the audio was "said" on the call. The call's audio was processed and live captions were sent to all call participants, as it would be on a call between real people. At the moment we do not have a measure for quality or accuracy of the live transcriptions.
 For the simultaneous calls, the second (and third) calls were started in different channels one minute (and two minutes) after the first call. This prevented the "talking over" portions of the call to line-up on every call and create an unrealistic amount of load.
 
 ### Summary
