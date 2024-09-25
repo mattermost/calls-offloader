@@ -1,6 +1,6 @@
 module github.com/mattermost/calls-offloader
 
-go 1.21.4
+go 1.22.7
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2

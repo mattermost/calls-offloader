@@ -2,7 +2,6 @@ on: [push]
 name: CI
 jobs:
   test:
-    name: "test"
     env:
       GOPATH: ${{ github.workspace }}
 
@@ -10,22 +9,19 @@ jobs:
       run:
         working-directory: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}
 
-    strategy:
-      matrix:
-        go-version: [1.21.x]
-
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - name: Checkout Code
+      uses: actions/checkout@v4
       with:
         path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}
-    - name: Execute tests
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}/go.mod
+        cache-dependency-path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}/go.sum
+    - name: Execute Tests
       run: |
         go mod download
         go mod verify
@@ -37,8 +33,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
           path: ${{ github.workspace }}/${{ github.repository }}
       - name: Start minikube
