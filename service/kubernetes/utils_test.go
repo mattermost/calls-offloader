@@ -171,3 +171,95 @@ func TestGetJobPodTolerations(t *testing.T) {
 		require.EqualError(t, err, "failed to open file invalid: open invalid: no such file or directory")
 	})
 }
+
+func TestGenInitContainers(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		jobID   string
+		image   string
+		sysctls string
+		err     string
+		cnts    []corev1.Container
+	}{
+		{
+			name: "empty jobID",
+			err:  "invalid empty jobID",
+		},
+		{
+			name:  "empty image",
+			jobID: "jobID",
+			err:   "invalid empty image",
+		},
+		{
+			name:  "empty sysctls",
+			jobID: "jobID",
+			image: "image",
+			err:   "invalid empty sysctls",
+		},
+		{
+			name:    "single sysctl",
+			jobID:   "jobID",
+			image:   "image",
+			sysctls: "kernel.unprivileged_userns_clone=1",
+			cnts: []corev1.Container{
+				{
+					Name:            "jobID-init-0",
+					Image:           "image",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command: []string{
+						"sysctl",
+						"-w",
+						"kernel.unprivileged_userns_clone=1",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: newBool(true),
+					},
+				},
+			},
+		},
+		{
+			name:    "multiple sysctls",
+			jobID:   "jobID",
+			image:   "image",
+			sysctls: "kernel.unprivileged_userns_clone=1,user.max_user_namespaces=4545",
+			cnts: []corev1.Container{
+				{
+					Name:            "jobID-init-0",
+					Image:           "image",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command: []string{
+						"sysctl",
+						"-w",
+						"kernel.unprivileged_userns_clone=1",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: newBool(true),
+					},
+				},
+				{
+					Name:            "jobID-init-1",
+					Image:           "image",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command: []string{
+						"sysctl",
+						"-w",
+						"user.max_user_namespaces=4545",
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: newBool(true),
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cnts, err := genInitContainers(tc.jobID, tc.image, tc.sysctls)
+			if tc.err != "" {
+				require.Empty(t, cnts)
+				require.EqualError(t, err, tc.err)
+			} else {
+				require.Equal(t, tc.cnts, cnts)
+			}
+		})
+	}
+}
