@@ -56,6 +56,7 @@ type JobServiceConfig struct {
 	ImageRegistry             string
 	JobsResourceRequirements  JobsResourceRequirements `toml:"jobs_resource_requirements"`
 	PersistentVolumeClaimName string                   `toml:"persistent_volume_claim_name"`
+	NodeSysctls               string                   `toml:"node_sysctls"`
 }
 
 func (c JobServiceConfig) IsValid() error {
@@ -153,35 +154,26 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	var jobID string
 	var jobPrefix string
 	var env []corev1.EnvVar
-	var initContainers []corev1.Container
 	switch cfg.Type {
 	case job.TypeRecording:
 		cfg.InputData.SetSiteURL(getSiteURLForJob(cfg.InputData.GetSiteURL()))
 		jobPrefix = job.RecordingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
 		env = append(env, getEnvFromJobInputData(cfg.InputData)...)
-		initContainers = []corev1.Container{
-			{
-				Name:            jobID + "-init",
-				Image:           k8sInitContainerImage,
-				ImagePullPolicy: corev1.PullIfNotPresent,
-				Command: []string{
-					// Enabling the `kernel.unprivileged_userns_clone` sysctl at node level is necessary in order to run Chromium sandbox.
-					// See https://developer.chrome.com/docs/puppeteer/troubleshooting/#recommended-enable-user-namespace-cloning for details.
-					"sysctl",
-					"-w",
-					"kernel.unprivileged_userns_clone=1",
-				},
-				SecurityContext: &corev1.SecurityContext{
-					Privileged: newBool(true),
-				},
-			},
-		}
 	case job.TypeTranscribing:
 		cfg.InputData.SetSiteURL(getSiteURLForJob(cfg.InputData.GetSiteURL()))
 		jobPrefix = job.TranscribingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
 		env = append(env, getEnvFromJobInputData(cfg.InputData)...)
+	}
+
+	var initContainers []corev1.Container
+	if s.cfg.NodeSysctls != "" {
+		s.log.Info("generating init containers", mlog.String("sysctls", s.cfg.NodeSysctls))
+		initContainers, err = genInitContainers(jobID, k8sInitContainerImage, s.cfg.NodeSysctls)
+		if err != nil {
+			return job.Job{}, fmt.Errorf("failed to generate init containers: %w", err)
+		}
 	}
 
 	var hostNetwork bool

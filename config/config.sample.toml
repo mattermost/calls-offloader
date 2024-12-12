@@ -47,6 +47,11 @@ image_registry = "mattermost"
 #
 # The Persistent Volume Claim name to use to store data produced by jobs (e.g. recording files).
 #persistent_volume_claim_name = "my-pvc"
+#
+# A comma separated list of Sysctls to apply on the node through priviledged init container before starting jobs.
+# For example, enabling the `kernel.unprivileged_userns_clone` at node level was necessary
+# on Debian based systems (pre kernel 5.10) in order to run Chromium sandbox.
+#node_sysctls = "kernel.unprivileged_userns_clone=1"
 
 [logger]
 # A boolean controlling whether to log to the console.
