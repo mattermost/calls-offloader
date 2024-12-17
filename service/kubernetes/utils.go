@@ -114,3 +114,37 @@ func getSiteURLForJob(siteURL string) string {
 
 	return siteURL
 }
+
+func genInitContainers(jobID, image, sysctls string) ([]corev1.Container, error) {
+	if jobID == "" {
+		return nil, fmt.Errorf("invalid empty jobID")
+	}
+
+	if image == "" {
+		return nil, fmt.Errorf("invalid empty image")
+	}
+
+	if sysctls == "" {
+		return nil, fmt.Errorf("invalid empty sysctls")
+	}
+
+	ctls := strings.Split(sysctls, ",")
+	cnts := make([]corev1.Container, len(ctls))
+	for i, ctl := range ctls {
+		cnts[i] = corev1.Container{
+			Name:            fmt.Sprintf("%s-init-%d", jobID, i),
+			Image:           image,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command: []string{
+				"sysctl",
+				"-w",
+				ctl,
+			},
+			SecurityContext: &corev1.SecurityContext{
+				Privileged: newBool(true),
+			},
+		}
+	}
+
+	return cnts, nil
+}
