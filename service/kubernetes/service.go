@@ -51,10 +51,11 @@ func (r *JobsResourceRequirements) UnmarshalTOML(data interface{}) error {
 }
 
 type JobServiceConfig struct {
-	MaxConcurrentJobs        int
-	FailedJobsRetentionTime  time.Duration
-	ImageRegistry            string
-	JobsResourceRequirements JobsResourceRequirements `toml:"jobs_resource_requirements"`
+	MaxConcurrentJobs         int
+	FailedJobsRetentionTime   time.Duration
+	ImageRegistry             string
+	JobsResourceRequirements  JobsResourceRequirements `toml:"jobs_resource_requirements"`
+	PersistentVolumeClaimName string                   `toml:"persistent_volume_claim_name"`
 }
 
 func (c JobServiceConfig) IsValid() error {
@@ -210,6 +211,21 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		ttlSecondsAfterFinished = newInt32(int32(s.cfg.FailedJobsRetentionTime.Seconds()))
 	}
 
+	volumes := []corev1.Volume{
+		{
+			Name: jobID,
+		},
+	}
+
+	if s.cfg.PersistentVolumeClaimName != "" {
+		s.log.Debug("using persistent volume claim", mlog.String("name", s.cfg.PersistentVolumeClaimName))
+		volumes[0].VolumeSource = corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: s.cfg.PersistentVolumeClaimName,
+			},
+		}
+	}
+
 	spec := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobID,
@@ -254,11 +270,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 							Resources: s.cfg.JobsResourceRequirements[cfg.Type],
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: jobID,
-						},
-					},
+					Volumes:     volumes,
 					Tolerations: tolerations,
 					// We don't want to ever restart pods as any failure needs to be
 					// surfaced to the user who should hit record again.

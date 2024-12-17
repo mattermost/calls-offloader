@@ -44,6 +44,9 @@ image_registry = "mattermost"
 # a per job type basis. Example:
 #[jobs.kubernetes]
 #jobs_resource_requirements = '{"transcribing":{"limits":{"cpu":"4000m"},"requests":{"cpu":"2000m"}},"recording":{"limits":{"cpu":"2000m"},"requests":{"cpu":"1000m"}}}'
+#
+# The Persistent Volume Claim name to use to store data produced by jobs (e.g. recording files).
+#persistent_volume_claim_name = "my-pvc"
 
 [logger]
 # A boolean controlling whether to log to the console.
@@ -62,4 +65,3 @@ file_level = "DEBUG"
 file_location = "calls-offloader.log"
 # A boolean controlling whether to display colors when logging to the console.
 enable_color = true
-
