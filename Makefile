@@ -358,6 +358,12 @@ go-fmt: ## to perform formatting
 	$(AT)$(GO) fmt ./... || ${FAIL}
 	@$(OK) App code formatting...
 
+.PHONY: go-doc
+go-doc: ## to generate documentation
+	@$(INFO) Generating Documentation...
+	$(AT)$(GO) run ./scripts/env_config.go ./docs/env_config.md || ${FAIL}
+	@$(OK) Generating Documentation
+
 .PHONY: github-release
 github-release: ## to publish a release and relevant artifacts to GitHub
 	@$(INFO) Generating github-release http://github.com/$(GITHUB_ORG)/$(GITHUB_REPO)/releases/tag/$(APP_VERSION) ...
