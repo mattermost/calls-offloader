@@ -224,11 +224,5 @@ func (s *Service) handleInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
-		data.err = "failed to create recording job: " + err.Error()
-		data.code = http.StatusInternalServerError
-		return
-	}
-
 	data.code = http.StatusOK
 }
