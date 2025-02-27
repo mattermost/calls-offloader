@@ -114,6 +114,6 @@ The last step is to configure the calls side to use the service. This is done vi
 
 When the Mattermost deployment is running in a private network, additional configuration may be necessary for the jobs spawned by the `calls-offloader` service to reach the Mattermost side.
 
-In such cases, it’s possible to override the site URL used by jobs to connect by setting (on the Mattermost service) the `MM_CALLS_RECORDER_SITE_URL` or `MM_CALLS_TRANSCRIBER_SITE_URL` environment variables respectively.
+In such cases, it’s possible to override the site URL used by recorder jobs or transcriber jobs to connect to Mattermost by setting (on the Mattermost service) the `MM_CALLS_RECORDER_SITE_URL` or `MM_CALLS_TRANSCRIBER_SITE_URL` environment variables, respectively.
 
 Additionally, it may necessary to add the internal site URL to the exception list in the [`ServiceSettings.AllowCorsFrom`](https://docs.mattermost.com/configure/integrations-configuration-settings.html#enable-cross-origin-requests-from) Mattermost server setting.
