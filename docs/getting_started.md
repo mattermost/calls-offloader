@@ -117,3 +117,6 @@ When the Mattermost deployment is running in a private network, additional confi
 In such cases, it’s possible to override the site URL used by recorder jobs or transcriber jobs to connect to Mattermost by setting (on the Mattermost service) the `MM_CALLS_RECORDER_SITE_URL` or `MM_CALLS_TRANSCRIBER_SITE_URL` environment variables, respectively.
 
 Additionally, it may necessary to add the internal site URL to the exception list in the [`ServiceSettings.AllowCorsFrom`](https://docs.mattermost.com/configure/integrations-configuration-settings.html#enable-cross-origin-requests-from) Mattermost server setting.
+
+> [!NOTE]
+> When running Docker in particularly restrictive environments (e.g., VMs), it may be necessary to set the `DOCKER_NETWORK=host` environment override so that the containers running the jobs can reach back to the Mattermost server through its local address.
