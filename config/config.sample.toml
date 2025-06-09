@@ -53,6 +53,11 @@ image_registry = "mattermost"
 # on Debian based systems (pre kernel 5.10) in order to run Chromium sandbox.
 #node_sysctls = "kernel.unprivileged_userns_clone=1"
 
+# Docker API specific settings
+# [jobs.docker]
+# Whether to output job logs to the console. Default is false.
+# output_logs = false
+
 [logger]
 # A boolean controlling whether to log to the console.
 enable_console = true

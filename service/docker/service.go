@@ -40,6 +40,7 @@ type JobServiceConfig struct {
 	MaxConcurrentJobs       int
 	FailedJobsRetentionTime time.Duration
 	ImageRegistry           string
+	OutputLogs              bool `toml:"output_logs"`
 }
 
 func (c JobServiceConfig) IsValid() error {
@@ -348,6 +349,14 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 		waitCh, errCh := s.client.ContainerWait(ctx, jb.ID, container.WaitConditionNotRunning)
 
+		if s.cfg.OutputLogs {
+			go func() {
+				if err := s.getJobLogs(ctx, jb.ID, os.Stdout, os.Stderr, true); err != nil {
+					s.log.Error("failed to get job logs", mlog.Err(err), mlog.String("jobID", jb.ID))
+				}
+			}()
+		}
+
 		var exitCode int
 		select {
 		case res := <-waitCh:
@@ -396,14 +405,12 @@ func (s *JobService) stopJob(jobID string) error {
 	return nil
 }
 
-func (s *JobService) GetJobLogs(jobID string, stdout, stderr io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
-	defer cancel()
-
+func (s *JobService) getJobLogs(ctx context.Context, jobID string, stdout, stderr io.Writer, follow bool) error {
 	rdr, err := s.client.ContainerLogs(ctx, jobID, types.ContainerLogsOptions{
 		ShowStderr: true,
 		ShowStdout: true,
 		Since:      time.Now().Add(-time.Hour).Format(time.RFC3339),
+		Follow:     follow,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get container logs: %s", err.Error())
@@ -416,6 +423,13 @@ func (s *JobService) GetJobLogs(jobID string, stdout, stderr io.Writer) error {
 	}
 
 	return nil
+}
+
+func (s *JobService) GetJobLogs(jobID string, stdout, stderr io.Writer) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
+	defer cancel()
+
+	return s.getJobLogs(ctx, jobID, stdout, stderr, false)
 }
 
 func (s *JobService) DeleteJob(jobID string) error {
