@@ -320,7 +320,11 @@ go-run: ## to run locally for development
 .PHONY: go-test
 go-test: ## to run tests
 	@$(INFO) testing...
-	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
+	$(AT)echo "DOCKER_HOST on host: $$DOCKER_HOST" && \
+	echo "DOCKER_SOCKET on host: $(DOCKER_SOCKET)" && \
+	echo "Socket path to mount: $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||')" && \
+	ls -la $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||') || echo "Socket file does not exist" && \
+	$(DOCKER) run ${DOCKER_OPTS} \
 	--privileged \
 	-v $(CURDIR):/app -w /app \
 	-v $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||'):/var/run/docker.sock \
