@@ -23,13 +23,11 @@ jobs:
         cache-dependency-path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}/go.sum
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    # - name: Configure DOCKER_HOST for rootless Docker
-    #   run: echo "DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock" >> $GITHUB_ENV
     - name: Execute Tests
       run: |
         go mod download
         go mod verify
-        sudo --preserve-env=DOCKER_HOST make DOCKER="sudo docker" test
+        make test
 
   k8s:
     name: "k8s"
