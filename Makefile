@@ -317,8 +317,8 @@ go-test: ## to run tests
 	@$(INFO) testing...
 	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
 	-v $(PWD):/app -w /app \
+	-v $(shell echo $$DOCKER_HOST | sed 's|unix://||'):/var/run/docker.sock
 	-e GOCACHE="/tmp" \
-	-e DOCKER_HOST=$(DOCKER_HOST) \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
 	"cd /app && \
