@@ -140,9 +140,7 @@ func genInitContainers(jobID, image, sysctls string) ([]corev1.Container, error)
 				"-w",
 				ctl,
 			},
-			SecurityContext: &corev1.SecurityContext{
-				Privileged: newBool(true),
-			},
+			SecurityContext: getJobPodSecurityContext(),
 		}
 	}
 
