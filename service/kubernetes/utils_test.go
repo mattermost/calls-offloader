@@ -233,7 +233,7 @@ func TestGenInitContainers(t *testing.T) {
 						"kernel.unprivileged_userns_clone=1",
 					},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged: newBool(true),
+						Privileged: newBool(false),
 					},
 				},
 				{

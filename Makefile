@@ -70,11 +70,6 @@ DOCKER_BUILD_OUTPUT_TYPE := "registry"
 DOCKER_TAG               := ${DOCKER_REGISTRY}/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
 endif
 
-UID            := $(shell id -u)
-# Rootless Docker socket on ubuntu-24.04 runners (falls back nicely)
-XDG_RUN        ?= $(or $(XDG_RUNTIME_DIR),/run/user/$(UID))
-DOCKER_SOCKET  ?= $(XDG_RUN)/docker.sock
-
 ## Cosign Variables
 # The public key
 COSIGN_PUBLIC_KEY       ?= akey
@@ -320,32 +315,13 @@ go-run: ## to run locally for development
 .PHONY: go-test
 go-test: ## to run tests
 	@$(INFO) testing...
-	$(AT)echo "DOCKER_HOST on host: $$DOCKER_HOST" && \
-	echo "DOCKER_SOCKET on host: $(DOCKER_SOCKET)" && \
-	echo "Socket path to mount: $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||')" && \
-	echo "Checking if Docker daemon is running:" && \
-	docker version || echo "Docker daemon not accessible" && \
-	echo "Looking for Docker sockets:" && \
-	find /run -name "docker.sock" 2>/dev/null || echo "No docker.sock found in /run" && \
-	find /var/run -name "docker.sock" 2>/dev/null || echo "No docker.sock found in /var/run" && \
-	ls -la $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||') || echo "Socket file does not exist" && \
-	$(DOCKER) run ${DOCKER_OPTS} \
-	--privileged \
+	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
 	-v $(CURDIR):/app -w /app \
 	-v /run/docker.sock:/var/run/docker.sock \
-	-e DOCKER_HOST=unix:///var/run/docker.sock \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
-	"echo 'DOCKER_HOST inside container:' \$$DOCKER_HOST && \
-	echo 'Docker socket path:' \$$(echo \$$DOCKER_HOST | sed 's|unix://||') && \
-	echo 'Checking /var/run/docker.sock:' && \
-	ls -la /var/run/docker.sock && \
-	echo 'Checking if it is a socket:' && \
-	file /var/run/docker.sock && \
-	echo 'Testing Docker connection:' && \
-	docker version || echo 'Docker command failed' && \
-	cd /app && \
+	"cd /app && \
 	go test ${GO_TEST_OPTS} ./... " || ${FAIL}
 	@$(OK) testing
 
