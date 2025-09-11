@@ -319,7 +319,7 @@ go-test: ## to run tests
 	-v $(PWD):/app -w /app \
 	-v $(shell echo $${DOCKER_HOST:-unix:///var/run/docker.sock} | sed 's|unix://||'):/var/run/docker.sock \
 	-e GOCACHE="/tmp" \
-	-e DOCKER_HOST=$(DOCKER_HOST) \
+	-e DOCKER_HOST=$$DOCKER_HOST \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
 	"cd /app && \
