@@ -316,8 +316,7 @@ go-run: ## to run locally for development
 go-test: ## to run tests
 	@$(INFO) testing...
 	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
-	-v $(PWD):/app -w /app \
-	-v /var/run/docker.sock:/var/run/docker.sock \
+	-v $(CURDIR):/app -w /app \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
