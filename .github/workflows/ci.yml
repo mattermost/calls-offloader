@@ -29,9 +29,7 @@ jobs:
       run: |
         go mod download
         go mod verify
-        make \
-          DOCKER="sudo docker" \
-          test
+        sudo --preserve-env=DOCKER_HOST make DOCKER="sudo docker" test
 
   k8s:
     name: "k8s"

@@ -62,12 +62,6 @@ DOCKER_BUILD_PLATFORMS   := "${OS}/${ARCH}"
 DOCKER_BUILD_OUTPUT_TYPE := "docker"
 DOCKER_BUILDER           := "multiarch"
 DOCKER_BUILDER_MISSING   := $(shell docker buildx inspect ${DOCKER_BUILDER} > /dev/null 2>&1; echo $$?)
-UID               := $(shell id -u)
-# Resolve the rootless socket (falls back for local devs without XDG_RUNTIME_DIR)
-XDG_RUN           ?= $(or $(XDG_RUNTIME_DIR),/run/user/$(UID))
-DOCKER_SOCKET     ?= $(XDG_RUN)/docker.sock
-DOCKER_SOCK_MOUNT ?= -v "$(DOCKER_SOCKET):/var/run/docker.sock"
-DOCKER_HOST_ENV   ?= -e DOCKER_HOST=unix:///var/run/docker.sock
 
 # When running on CI we want to use our official release targets.
 ifeq ($(CI),true)
@@ -75,6 +69,11 @@ DOCKER_BUILD_PLATFORMS   := "linux/amd64,linux/arm64"
 DOCKER_BUILD_OUTPUT_TYPE := "registry"
 DOCKER_TAG               := ${DOCKER_REGISTRY}/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
 endif
+
+UID            := $(shell id -u)
+# Rootless Docker socket on ubuntu-24.04 runners (falls back nicely)
+XDG_RUN        ?= $(or $(XDG_RUNTIME_DIR),/run/user/$(UID))
+DOCKER_SOCKET  ?= $(XDG_RUN)/docker.sock
 
 ## Cosign Variables
 # The public key
@@ -322,8 +321,9 @@ go-run: ## to run locally for development
 go-test: ## to run tests
 	@$(INFO) testing...
 	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
-	$(DOCKER_SOCK_MOUNT) $(DOCKER_HOST_ENV) \
 	-v $(CURDIR):/app -w /app \
+	-v "$(DOCKER_SOCKET):/var/run/docker.sock" \
+	-e DOCKER_HOST=unix:///var/run/docker.sock \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
