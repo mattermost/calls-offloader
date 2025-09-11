@@ -148,3 +148,17 @@ func genInitContainers(jobID, image, sysctls string) ([]corev1.Container, error)
 
 	return cnts, nil
 }
+
+func getJobPodSecurityContext() *corev1.SecurityContext {
+	//SECURITY_CONTEXT_PRIVILEGED is used to override the default security context.
+	//If not set, the default is false.
+
+	if os.Getenv("SECURITY_CONTEXT_PRIVILEGED") == "false" || os.Getenv("SECURITY_CONTEXT_PRIVILEGED") == "" {
+		return &corev1.SecurityContext{
+			Privileged: newBool(false),
+		}
+	}
+	return &corev1.SecurityContext{
+		Privileged: newBool(true),
+	}
+}
