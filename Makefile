@@ -330,7 +330,12 @@ go-test: ## to run tests
 	/bin/sh -c \
 	"echo 'DOCKER_HOST inside container:' \$$DOCKER_HOST && \
 	echo 'Docker socket path:' \$$(echo \$$DOCKER_HOST | sed 's|unix://||') && \
+	echo 'Checking /var/run/docker.sock:' && \
 	ls -la /var/run/docker.sock && \
+	echo 'Checking if it is a socket:' && \
+	file /var/run/docker.sock && \
+	echo 'Testing Docker connection:' && \
+	docker version || echo 'Docker command failed' && \
 	cd /app && \
 	go test ${GO_TEST_OPTS} ./... " || ${FAIL}
 	@$(OK) testing
