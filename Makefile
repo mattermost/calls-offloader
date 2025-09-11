@@ -324,7 +324,7 @@ go-test: ## to run tests
 	--privileged \
 	-v $(CURDIR):/app -w /app \
 	-v $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||'):/var/run/docker.sock \
-	-e DOCKER_HOST=$$DOCKER_HOST \
+	-e DOCKER_HOST=unix:///var/run/docker.sock \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
