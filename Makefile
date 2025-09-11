@@ -323,6 +323,11 @@ go-test: ## to run tests
 	$(AT)echo "DOCKER_HOST on host: $$DOCKER_HOST" && \
 	echo "DOCKER_SOCKET on host: $(DOCKER_SOCKET)" && \
 	echo "Socket path to mount: $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||')" && \
+	echo "Checking if Docker daemon is running:" && \
+	docker version || echo "Docker daemon not accessible" && \
+	echo "Looking for Docker sockets:" && \
+	find /run -name "docker.sock" 2>/dev/null || echo "No docker.sock found in /run" && \
+	find /var/run -name "docker.sock" 2>/dev/null || echo "No docker.sock found in /var/run" && \
 	ls -la $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||') || echo "Socket file does not exist" && \
 	$(DOCKER) run ${DOCKER_OPTS} \
 	--privileged \
