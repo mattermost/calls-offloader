@@ -328,7 +328,10 @@ go-test: ## to run tests
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
-	"cd /app && \
+	"echo 'DOCKER_HOST inside container:' \$$DOCKER_HOST && \
+	echo 'Docker socket path:' \$$(echo \$$DOCKER_HOST | sed 's|unix://||') && \
+	ls -la /var/run/docker.sock && \
+	cd /app && \
 	go test ${GO_TEST_OPTS} ./... " || ${FAIL}
 	@$(OK) testing
 
