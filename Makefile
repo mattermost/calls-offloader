@@ -318,6 +318,7 @@ go-test: ## to run tests
 	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
 	-v $(CURDIR):/app -w /app \
 	-v /run/docker.sock:/var/run/docker.sock \
+	-e DOCKER_HOST=unix:///var/run/docker.sock \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
