@@ -321,9 +321,10 @@ go-run: ## to run locally for development
 go-test: ## to run tests
 	@$(INFO) testing...
 	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
+	--privileged \
 	-v $(CURDIR):/app -w /app \
-	-v "$(DOCKER_SOCKET):/var/run/docker.sock" \
-	-e DOCKER_HOST=unix:///var/run/docker.sock \
+	-v $(shell echo $${DOCKER_HOST:-$(DOCKER_SOCKET)} | sed 's|unix://||'):/var/run/docker.sock \
+	-e DOCKER_HOST=$$DOCKER_HOST \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
