@@ -27,7 +27,7 @@ jobs:
       run: |
         go mod download
         go mod verify
-        sudo make DOCKER="sudo docker" test
+        sudo DOCKER_HOST_PATH=/run/docker.sock make DOCKER="sudo docker" test
 
   k8s:
     name: "k8s"

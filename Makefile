@@ -41,8 +41,10 @@ ARCH                    ?= amd64
 DOCKER                  := $(shell which docker)
 # Dockerfile's location
 DOCKER_FILE             += ./build/Dockerfile
+DOCKER_PLATFORM         ?= "linux/$(ARCH)"
 # Docker options to inherit for all docker run commands
-DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "linux/amd64"
+DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "${DOCKER_PLATFORM}"
+DOCKER_HOST_PATH             ?= /var/run/docker.sock
 # Registry to upload images
 DOCKER_REGISTRY         ?= docker.io
 DOCKER_REGISTRY_REPO    ?= mattermost/${APP_NAME}-daily
@@ -317,7 +319,7 @@ go-test: ## to run tests
 	@$(INFO) testing...
 	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
 	-v $(CURDIR):/app -w /app \
-	-v /run/docker.sock:/var/run/docker.sock \
+	-v $(DOCKER_HOST_PATH):/var/run/docker.sock \
 	-e DOCKER_HOST=unix:///var/run/docker.sock \
 	-e GOCACHE="/tmp" \
 	$(DOCKER_IMAGE_GO) \
