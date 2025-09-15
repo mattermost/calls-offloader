@@ -21,11 +21,13 @@ jobs:
       with:
         go-version-file: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}/go.mod
         cache-dependency-path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}/go.sum
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Execute Tests
       run: |
         go mod download
         go mod verify
-        make test
+        sudo DOCKER_HOST_PATH=/run/docker.sock make DOCKER="sudo docker" test
 
   k8s:
     name: "k8s"

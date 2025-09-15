@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/mattermost/calls-offloader/public/job"
@@ -140,11 +141,18 @@ func genInitContainers(jobID, image, sysctls string) ([]corev1.Container, error)
 				"-w",
 				ctl,
 			},
-			SecurityContext: &corev1.SecurityContext{
-				Privileged: newBool(true),
-			},
+			SecurityContext: getJobPodSecurityContext(),
 		}
 	}
 
 	return cnts, nil
+}
+
+func getJobPodSecurityContext() *corev1.SecurityContext {
+	//SECURITY_CONTEXT_PRIVILEGED is used to override the default security context.
+	//If not set, the default is false.
+	privileged, _ := strconv.ParseBool(os.Getenv("SECURITY_CONTEXT_PRIVILEGED"))
+	return &corev1.SecurityContext{
+		Privileged: newBool(privileged),
+	}
 }

@@ -212,7 +212,7 @@ func TestGenInitContainers(t *testing.T) {
 						"kernel.unprivileged_userns_clone=1",
 					},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged: newBool(true),
+						Privileged: newBool(false),
 					},
 				},
 			},
@@ -233,7 +233,7 @@ func TestGenInitContainers(t *testing.T) {
 						"kernel.unprivileged_userns_clone=1",
 					},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged: newBool(true),
+						Privileged: newBool(false),
 					},
 				},
 				{
@@ -246,7 +246,7 @@ func TestGenInitContainers(t *testing.T) {
 						"user.max_user_namespaces=4545",
 					},
 					SecurityContext: &corev1.SecurityContext{
-						Privileged: newBool(true),
+						Privileged: newBool(false),
 					},
 				},
 			},
@@ -262,4 +262,69 @@ func TestGenInitContainers(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGenInitContainersWithSecurityContext(t *testing.T) {
+	t.Run("init containers use non-privileged by default", func(t *testing.T) {
+		os.Unsetenv("SECURITY_CONTEXT_PRIVILEGED")
+
+		cnts, err := genInitContainers("test-job", "test-image", "kernel.unprivileged_userns_clone=1")
+		require.NoError(t, err)
+		require.Len(t, cnts, 1)
+		require.NotNil(t, cnts[0].SecurityContext)
+		require.NotNil(t, cnts[0].SecurityContext.Privileged)
+		require.False(t, *cnts[0].SecurityContext.Privileged)
+	})
+
+	t.Run("init containers use privileged when env var is true", func(t *testing.T) {
+		os.Setenv("SECURITY_CONTEXT_PRIVILEGED", "true")
+		defer os.Unsetenv("SECURITY_CONTEXT_PRIVILEGED")
+
+		cnts, err := genInitContainers("test-job", "test-image", "kernel.unprivileged_userns_clone=1")
+		require.NoError(t, err)
+		require.Len(t, cnts, 1)
+		require.NotNil(t, cnts[0].SecurityContext)
+		require.NotNil(t, cnts[0].SecurityContext.Privileged)
+		require.True(t, *cnts[0].SecurityContext.Privileged)
+	})
+
+	t.Run("init containers use non-privileged when env var is false", func(t *testing.T) {
+		os.Setenv("SECURITY_CONTEXT_PRIVILEGED", "false")
+		defer os.Unsetenv("SECURITY_CONTEXT_PRIVILEGED")
+
+		cnts, err := genInitContainers("test-job", "test-image", "kernel.unprivileged_userns_clone=1")
+		require.NoError(t, err)
+		require.Len(t, cnts, 1)
+		require.NotNil(t, cnts[0].SecurityContext)
+		require.NotNil(t, cnts[0].SecurityContext.Privileged)
+		require.False(t, *cnts[0].SecurityContext.Privileged)
+	})
+
+	t.Run("multiple init containers all use same security context", func(t *testing.T) {
+		os.Setenv("SECURITY_CONTEXT_PRIVILEGED", "true")
+		defer os.Unsetenv("SECURITY_CONTEXT_PRIVILEGED")
+
+		cnts, err := genInitContainers("test-job", "test-image", "kernel.unprivileged_userns_clone=1,user.max_user_namespaces=4545")
+		require.NoError(t, err)
+		require.Len(t, cnts, 2)
+
+		// Both containers should have privileged=true
+		for i, cnt := range cnts {
+			require.NotNil(t, cnt.SecurityContext, "Container %d should have SecurityContext", i)
+			require.NotNil(t, cnt.SecurityContext.Privileged, "Container %d should have Privileged set", i)
+			require.True(t, *cnt.SecurityContext.Privileged, "Container %d should be privileged", i)
+		}
+	})
+
+	t.Run("init containers respect case insensitive env var", func(t *testing.T) {
+		os.Setenv("SECURITY_CONTEXT_PRIVILEGED", "TRUE")
+		defer os.Unsetenv("SECURITY_CONTEXT_PRIVILEGED")
+
+		cnts, err := genInitContainers("test-job", "test-image", "kernel.unprivileged_userns_clone=1")
+		require.NoError(t, err)
+		require.Len(t, cnts, 1)
+		require.NotNil(t, cnts[0].SecurityContext)
+		require.NotNil(t, cnts[0].SecurityContext.Privileged)
+		require.True(t, *cnts[0].SecurityContext.Privileged)
+	})
 }
