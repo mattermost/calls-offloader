@@ -398,7 +398,8 @@ func (s *JobService) stopJob(jobID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
 
-	if err := s.client.ContainerStop(ctx, jobID, &dockerStopTimeout); err != nil {
+	timeout := int(dockerStopTimeout.Seconds())
+	if err := s.client.ContainerStop(ctx, jobID, container.StopOptions{Timeout: &timeout}); err != nil {
 		return fmt.Errorf("failed to stop container: %s", err.Error())
 	}
 
