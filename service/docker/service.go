@@ -309,11 +309,11 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	volumeID := jobPrefix + "-" + random.NewID()
 
-	// In TEST_MODE, disable AppArmor to allow runc to work in nested Docker environments.
+	// In CI_MODE, disable AppArmor to allow runc to work in nested Docker environments.
 	// This is necessary for Docker SDK v24+ with runc v1.3.4+ in CI environments.
 	// See: https://github.com/opencontainers/runc/issues/4968
 	securityOpts := []string{dockerSecurityOpts}
-	if os.Getenv("TEST_MODE") == "true" {
+	if os.Getenv("CI_MODE") == "true" {
 		securityOpts = append(securityOpts, "apparmor=unconfined")
 	}
 
