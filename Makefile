@@ -322,6 +322,7 @@ go-test: ## to run tests
 	-v $(DOCKER_HOST_PATH):/var/run/docker.sock \
 	-e DOCKER_HOST=unix:///var/run/docker.sock \
 	-e GOCACHE="/tmp" \
+	-e TEST_MODE=true \
 	$(DOCKER_IMAGE_GO) \
 	/bin/sh -c \
 	"cd /app && \
