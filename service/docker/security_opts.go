@@ -1370,6 +1370,11 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "statx",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "symlink",
             "action": "SCMP_ACT_ALLOW",
             "args": null
