@@ -308,6 +308,15 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	defer cancel()
 
 	volumeID := jobPrefix + "-" + random.NewID()
+
+	// In TEST_MODE, disable AppArmor to allow runc to work in nested Docker environments.
+	// This is necessary for Docker SDK v24+ with runc v1.3.4+ in CI environments.
+	// See: https://github.com/opencontainers/runc/issues/4968
+	securityOpts := []string{dockerSecurityOpts}
+	if os.Getenv("TEST_MODE") == "true" {
+		securityOpts = append(securityOpts, "apparmor=unconfined")
+	}
+
 	resp, err := s.client.ContainerCreate(ctx, &container.Config{
 		Image:   jb.Runner,
 		Tty:     false,
@@ -326,7 +335,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 				Type:   "volume",
 			},
 		},
-		SecurityOpt: []string{dockerSecurityOpts},
+		SecurityOpt: securityOpts,
 	}, nil, nil, "")
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to create container: %w", err)
