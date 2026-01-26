@@ -112,8 +112,12 @@ func NewClient(cfg ClientConfig, opts ...ClientOption) (*Client, error) {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
-	// Add CA certificate if specified
-	if caCertFile := os.Getenv("API_TLS_CA_CERT_FILE"); caCertFile != "" {
+	// Configure TLS based on environment variables
+	if skipVerify := os.Getenv("API_HTTP_TLS_INSECURE_SKIP_VERIFY"); skipVerify == "true" || skipVerify == "1" {
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	} else if caCertFile := os.Getenv("API_HTTP_TLS_CA_CERT_FILE"); caCertFile != "" {
 		caCert, err := os.ReadFile(caCertFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read CA certificate: %w", err)

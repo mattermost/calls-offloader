@@ -13,6 +13,8 @@ import (
 
 	"github.com/mattermost/calls-offloader/public/job"
 
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -155,4 +157,70 @@ func getJobPodSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		Privileged: newBool(privileged),
 	}
+}
+
+func getVolumesAndMounts(jobID, persistentVolumeClaimName string, log mlog.LoggerIFace) ([]corev1.Volume, []corev1.VolumeMount) {
+	// Start with the data volume
+	volumes := []corev1.Volume{
+		{
+			Name: jobID,
+		},
+	}
+
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      jobID,
+			MountPath: k8sVolumePath,
+		},
+	}
+
+	// Configure data volume source if using PVC
+	if persistentVolumeClaimName != "" {
+		log.Debug("using persistent volume claim", mlog.String("name", persistentVolumeClaimName))
+		volumes[0].VolumeSource = corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: persistentVolumeClaimName,
+			},
+		}
+	}
+
+	// Add certificate volume and mount if ConfigMap is specified
+	if certConfigMap := os.Getenv("JOBS_K8S_CERT_CONFIGMAP"); certConfigMap != "" {
+		log.Debug("adding certificate ConfigMap volume", mlog.String("configMap", certConfigMap))
+		volumes = append(volumes, corev1.Volume{
+			Name: "certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: certConfigMap,
+					},
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      "certs",
+			MountPath: "/certs",
+			ReadOnly:  true,
+		})
+	}
+
+	// Add certificate volume and mount if Secret is specified
+	if certSecret := os.Getenv("JOBS_K8S_CERT_SECRET"); certSecret != "" {
+		log.Debug("adding certificate Secret volume", mlog.String("secret", certSecret))
+		volumes = append(volumes, corev1.Volume{
+			Name: "certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: certSecret,
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      "certs",
+			MountPath: "/certs",
+			ReadOnly:  true,
+		})
+	}
+
+	return volumes, mounts
 }

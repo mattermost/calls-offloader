@@ -203,20 +203,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		ttlSecondsAfterFinished = newInt32(int32(s.cfg.FailedJobsRetentionTime.Seconds()))
 	}
 
-	volumes := []corev1.Volume{
-		{
-			Name: jobID,
-		},
-	}
-
-	if s.cfg.PersistentVolumeClaimName != "" {
-		s.log.Debug("using persistent volume claim", mlog.String("name", s.cfg.PersistentVolumeClaimName))
-		volumes[0].VolumeSource = corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: s.cfg.PersistentVolumeClaimName,
-			},
-		}
-	}
+	// Build volumes and mounts together to keep them in sync
+	volumes, volumeMounts := getVolumesAndMounts(jobID, s.cfg.PersistentVolumeClaimName, s.log)
 
 	spec := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -252,12 +240,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 							Name:            jobID,
 							Image:           cfg.Runner,
 							ImagePullPolicy: corev1.PullIfNotPresent,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      jobID,
-									MountPath: k8sVolumePath,
-								},
-							},
+							VolumeMounts:    volumeMounts,
 							Env:             env,
 							Resources:       s.cfg.JobsResourceRequirements[cfg.Type],
 							SecurityContext: getJobPodSecurityContext(),
