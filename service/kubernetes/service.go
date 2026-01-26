@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -80,9 +81,36 @@ type JobService struct {
 }
 
 func NewJobService(log mlog.LoggerIFace, cfg JobServiceConfig) (*JobService, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create in-cluster config: %w", err)
+	// Try to load kubeconfig for local development first
+	var config *rest.Config
+	var err error
+
+	// Check if KUBECONFIG env var is set, otherwise use default location
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		// Use default kubeconfig location
+		if home := os.Getenv("HOME"); home != "" {
+			kubeconfig = home + "/.kube/config"
+		}
+	}
+
+	// Try to load out-of-cluster config (for local development)
+	if kubeconfig != "" {
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			log.Debug("failed to load kubeconfig, trying in-cluster config", mlog.Err(err))
+		} else {
+			log.Debug("using kubeconfig", mlog.String("path", kubeconfig))
+		}
+	}
+
+	// Fall back to in-cluster config if kubeconfig loading failed
+	if config == nil {
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create kubernetes config: %w", err)
+		}
+		log.Debug("using in-cluster kubernetes config")
 	}
 
 	cs, err := k8s.NewForConfig(config)
@@ -159,11 +187,13 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		cfg.InputData.SetSiteURL(getSiteURLForJob(cfg.InputData.GetSiteURL()))
 		jobPrefix = job.RecordingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
+		s.log.Debug("creating recording job", mlog.String("jobID", jobID), mlog.String("callID", fmt.Sprintf("%v", cfg.InputData["call_id"])))
 		env = append(env, getEnvFromJobInputData(cfg.InputData)...)
 	case job.TypeTranscribing:
 		cfg.InputData.SetSiteURL(getSiteURLForJob(cfg.InputData.GetSiteURL()))
 		jobPrefix = job.TranscribingJobPrefix
 		jobID = jobPrefix + "-job-" + random.NewID()
+		s.log.Debug("creating transcription job", mlog.String("jobID", jobID), mlog.String("transcriptionID", fmt.Sprintf("%v", cfg.InputData["transcription_id"])))
 		env = append(env, getEnvFromJobInputData(cfg.InputData)...)
 	}
 
