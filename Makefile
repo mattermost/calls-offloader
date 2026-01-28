@@ -317,7 +317,7 @@ go-run: ## to run locally for development
 .PHONY: go-test
 go-test: ## to run tests
 	@$(INFO) testing...
-	$(AT)$(DOCKER) run ${DOCKER_OPTS} \
+	$(AT)$(DOCKER) run --privileged ${DOCKER_OPTS} \
 	-v $(CURDIR):/app -w /app \
 	-v $(DOCKER_HOST_PATH):/var/run/docker.sock \
 	-e DOCKER_HOST=unix:///var/run/docker.sock \

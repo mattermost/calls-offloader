@@ -308,6 +308,9 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	defer cancel()
 
 	volumeID := jobPrefix + "-" + random.NewID()
+
+	securityOpts := []string{dockerSecurityOpts}
+
 	resp, err := s.client.ContainerCreate(ctx, &container.Config{
 		Image:   jb.Runner,
 		Tty:     false,
@@ -326,7 +329,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 				Type:   "volume",
 			},
 		},
-		SecurityOpt: []string{dockerSecurityOpts},
+		SecurityOpt: securityOpts,
 	}, nil, nil, "")
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to create container: %w", err)
@@ -398,7 +401,8 @@ func (s *JobService) stopJob(jobID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
 
-	if err := s.client.ContainerStop(ctx, jobID, &dockerStopTimeout); err != nil {
+	timeout := int(dockerStopTimeout.Seconds())
+	if err := s.client.ContainerStop(ctx, jobID, container.StopOptions{Timeout: &timeout}); err != nil {
 		return fmt.Errorf("failed to stop container: %s", err.Error())
 	}
 
