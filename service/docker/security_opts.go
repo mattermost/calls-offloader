@@ -125,7 +125,17 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "close_range",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "connect",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "copy_file_range",
             "action": "SCMP_ACT_ALLOW",
             "args": null
         },
@@ -180,6 +190,11 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "epoll_pwait2",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "epoll_wait_old",
             "action": "SCMP_ACT_ALLOW",
             "args": null
@@ -216,6 +231,11 @@ const dockerSecurityOptsProfileJSON = `
         },
         {
             "name": "faccessat",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "faccessat2",
             "action": "SCMP_ACT_ALLOW",
             "args": null
         },
@@ -345,6 +365,26 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "fsconfig",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "fsmount",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "fsopen",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "fspick",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "fsync",
             "action": "SCMP_ACT_ALLOW",
             "args": null
@@ -361,6 +401,11 @@ const dockerSecurityOptsProfileJSON = `
         },
         {
             "name": "futex",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "futex_waitv",
             "action": "SCMP_ACT_ALLOW",
             "args": null
         },
@@ -690,6 +735,11 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "membarrier",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "memfd_create",
             "action": "SCMP_ACT_ALLOW",
             "args": null
@@ -775,6 +825,11 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "move_mount",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "mremap",
             "action": "SCMP_ACT_ALLOW",
             "args": null
@@ -850,7 +905,17 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "open_tree",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "openat",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "openat2",
             "action": "SCMP_ACT_ALLOW",
             "args": null
         },
@@ -861,6 +926,21 @@ const dockerSecurityOptsProfileJSON = `
         },
         {
             "name": "pipe",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "pidfd_getfd",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "pidfd_open",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "pidfd_send_signal",
             "action": "SCMP_ACT_ALLOW",
             "args": null
         },
@@ -895,6 +975,11 @@ const dockerSecurityOptsProfileJSON = `
             "args": null
         },
         {
+            "name": "preadv2",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
             "name": "prlimit64",
             "action": "SCMP_ACT_ALLOW",
             "args": null
@@ -911,6 +996,11 @@ const dockerSecurityOptsProfileJSON = `
         },
         {
             "name": "pwritev",
+            "action": "SCMP_ACT_ALLOW",
+            "args": null
+        },
+        {
+            "name": "pwritev2",
             "action": "SCMP_ACT_ALLOW",
             "args": null
         },
