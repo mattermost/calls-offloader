@@ -173,7 +173,8 @@ func TestFailedJobsRetention(t *testing.T) {
 	ctx, cancel = context.WithTimeout(context.Background(), dockerRequestTimeout)
 	defer cancel()
 	_, err = jobService.client.ContainerInspect(ctx, job.ID)
-	require.EqualError(t, err, fmt.Sprintf("Error: No such container: %s", job.ID))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), fmt.Sprintf("No such container: %s", job.ID))
 
 	err = jobService.Shutdown()
 	require.NoError(t, err)
