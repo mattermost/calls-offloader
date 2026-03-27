@@ -6,8 +6,6 @@ package public
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/mattermost/calls-offloader/public/job"
@@ -110,25 +107,6 @@ func NewClient(cfg ClientConfig, opts ...ClientOption) (*Client, error) {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   1 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	// Configure TLS based on environment variables
-	if skipVerify := os.Getenv("API_HTTP_TLS_INSECURE_SKIP_VERIFY"); skipVerify == "true" || skipVerify == "1" {
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
-		}
-	} else if caCertFile := os.Getenv("API_HTTP_TLS_CA_CERT_FILE"); caCertFile != "" {
-		caCert, err := os.ReadFile(caCertFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
-		}
-		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("failed to parse CA certificate")
-		}
-		transport.TLSClientConfig = &tls.Config{
-			RootCAs: caCertPool,
-		}
 	}
 
 	c.httpClient = &http.Client{Transport: transport}
