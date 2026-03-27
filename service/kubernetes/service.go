@@ -234,7 +234,10 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 	}
 
 	// Build volumes and mounts together to keep them in sync
-	volumes, volumeMounts := getVolumesAndMounts(jobID, s.cfg.PersistentVolumeClaimName, s.log)
+	volumes, volumeMounts, err := getVolumesAndMounts(jobID, s.cfg.PersistentVolumeClaimName, s.log)
+	if err != nil {
+		return job.Job{}, fmt.Errorf("failed to get volumes and mounts: %w", err)
+	}
 
 	spec := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

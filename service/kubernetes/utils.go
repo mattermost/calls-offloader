@@ -159,7 +159,13 @@ func getJobPodSecurityContext() *corev1.SecurityContext {
 	}
 }
 
-func getVolumesAndMounts(jobID, persistentVolumeClaimName string, log mlog.LoggerIFace) ([]corev1.Volume, []corev1.VolumeMount) {
+func getVolumesAndMounts(jobID, persistentVolumeClaimName string, log mlog.LoggerIFace) ([]corev1.Volume, []corev1.VolumeMount, error) {
+	certConfigMap := os.Getenv("JOBS_K8S_CERT_CONFIGMAP")
+	certSecret := os.Getenv("JOBS_K8S_CERT_SECRET")
+	if certConfigMap != "" && certSecret != "" {
+		return nil, nil, fmt.Errorf("JOBS_K8S_CERT_CONFIGMAP and JOBS_K8S_CERT_SECRET are mutually exclusive, set only one")
+	}
+
 	// Start with the data volume
 	volumes := []corev1.Volume{
 		{
@@ -185,7 +191,7 @@ func getVolumesAndMounts(jobID, persistentVolumeClaimName string, log mlog.Logge
 	}
 
 	// Add certificate volume and mount if ConfigMap is specified
-	if certConfigMap := os.Getenv("JOBS_K8S_CERT_CONFIGMAP"); certConfigMap != "" {
+	if certConfigMap != "" {
 		log.Debug("adding certificate ConfigMap volume", mlog.String("configMap", certConfigMap))
 		volumes = append(volumes, corev1.Volume{
 			Name: "certs",
@@ -205,7 +211,7 @@ func getVolumesAndMounts(jobID, persistentVolumeClaimName string, log mlog.Logge
 	}
 
 	// Add certificate volume and mount if Secret is specified
-	if certSecret := os.Getenv("JOBS_K8S_CERT_SECRET"); certSecret != "" {
+	if certSecret != "" {
 		log.Debug("adding certificate Secret volume", mlog.String("secret", certSecret))
 		volumes = append(volumes, corev1.Volume{
 			Name: "certs",
@@ -222,5 +228,5 @@ func getVolumesAndMounts(jobID, persistentVolumeClaimName string, log mlog.Logge
 		})
 	}
 
-	return volumes, mounts
+	return volumes, mounts, nil
 }
