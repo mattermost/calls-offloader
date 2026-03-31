@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mattermost/calls-offloader/public/job"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -326,5 +327,101 @@ func TestGenInitContainersWithSecurityContext(t *testing.T) {
 		require.NotNil(t, cnts[0].SecurityContext)
 		require.NotNil(t, cnts[0].SecurityContext.Privileged)
 		require.True(t, *cnts[0].SecurityContext.Privileged)
+	})
+}
+
+func TestGetVolumesAndMounts(t *testing.T) {
+	log, err := mlog.NewLogger()
+	require.NoError(t, err)
+
+	t.Run("default, no PVC, no cert", func(t *testing.T) {
+		volumes, mounts, err := getVolumesAndMounts("job-1", "", log)
+		require.NoError(t, err)
+		require.Len(t, volumes, 1)
+		require.Len(t, mounts, 1)
+
+		require.Equal(t, "job-1", volumes[0].Name)
+		require.Nil(t, volumes[0].VolumeSource.PersistentVolumeClaim)
+
+		require.Equal(t, "job-1", mounts[0].Name)
+		require.Equal(t, "/data", mounts[0].MountPath)
+	})
+
+	t.Run("with PVC", func(t *testing.T) {
+		volumes, mounts, err := getVolumesAndMounts("job-2", "my-pvc", log)
+		require.NoError(t, err)
+		require.Len(t, volumes, 1)
+		require.Len(t, mounts, 1)
+
+		require.NotNil(t, volumes[0].VolumeSource.PersistentVolumeClaim)
+		require.Equal(t, "my-pvc", volumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
+	})
+
+	t.Run("with ConfigMap cert", func(t *testing.T) {
+		t.Setenv("JOBS_K8S_CERT_CONFIGMAP", "my-ca-configmap")
+
+		volumes, mounts, err := getVolumesAndMounts("job-3", "", log)
+		require.NoError(t, err)
+		require.Len(t, volumes, 2)
+		require.Len(t, mounts, 2)
+
+		// Data volume
+		require.Equal(t, "job-3", volumes[0].Name)
+
+		// Cert volume
+		require.Equal(t, "certs", volumes[1].Name)
+		require.NotNil(t, volumes[1].VolumeSource.ConfigMap)
+		require.Equal(t, "my-ca-configmap", volumes[1].VolumeSource.ConfigMap.Name)
+
+		// Cert mount
+		require.Equal(t, "certs", mounts[1].Name)
+		require.Equal(t, "/certs", mounts[1].MountPath)
+		require.True(t, mounts[1].ReadOnly)
+	})
+
+	t.Run("with Secret cert", func(t *testing.T) {
+		t.Setenv("JOBS_K8S_CERT_SECRET", "my-ca-secret")
+
+		volumes, mounts, err := getVolumesAndMounts("job-4", "", log)
+		require.NoError(t, err)
+		require.Len(t, volumes, 2)
+		require.Len(t, mounts, 2)
+
+		// Cert volume
+		require.Equal(t, "certs", volumes[1].Name)
+		require.NotNil(t, volumes[1].VolumeSource.Secret)
+		require.Equal(t, "my-ca-secret", volumes[1].VolumeSource.Secret.SecretName)
+
+		// Cert mount
+		require.Equal(t, "certs", mounts[1].Name)
+		require.Equal(t, "/certs", mounts[1].MountPath)
+		require.True(t, mounts[1].ReadOnly)
+	})
+
+	t.Run("with PVC and ConfigMap cert", func(t *testing.T) {
+		t.Setenv("JOBS_K8S_CERT_CONFIGMAP", "my-ca-configmap")
+
+		volumes, mounts, err := getVolumesAndMounts("job-5", "my-pvc", log)
+		require.NoError(t, err)
+		require.Len(t, volumes, 2)
+		require.Len(t, mounts, 2)
+
+		// Data volume has PVC
+		require.NotNil(t, volumes[0].VolumeSource.PersistentVolumeClaim)
+		require.Equal(t, "my-pvc", volumes[0].VolumeSource.PersistentVolumeClaim.ClaimName)
+
+		// Cert volume has ConfigMap
+		require.Equal(t, "certs", volumes[1].Name)
+		require.NotNil(t, volumes[1].VolumeSource.ConfigMap)
+	})
+
+	t.Run("both ConfigMap and Secret set", func(t *testing.T) {
+		t.Setenv("JOBS_K8S_CERT_CONFIGMAP", "my-ca-configmap")
+		t.Setenv("JOBS_K8S_CERT_SECRET", "my-ca-secret")
+
+		volumes, mounts, err := getVolumesAndMounts("job-6", "", log)
+		require.EqualError(t, err, "JOBS_K8S_CERT_CONFIGMAP and JOBS_K8S_CERT_SECRET are mutually exclusive, set only one")
+		require.Nil(t, volumes)
+		require.Nil(t, mounts)
 	})
 }

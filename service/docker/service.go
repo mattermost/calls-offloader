@@ -309,7 +309,26 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	volumeID := jobPrefix + "-" + random.NewID()
 
-	securityOpts := []string{dockerSecurityOpts}
+	// Build mounts list starting with data volume
+	mounts := []mount.Mount{
+		{
+			Target: dockerVolumePath,
+			Source: volumeID,
+			Type:   "volume",
+		},
+	}
+
+	// Add certificate mount if specified
+	// Note: We use JOBS_DOCKER_CERT_PATH instead of DOCKER_CERT_PATH to avoid
+	// conflicting with Docker's built-in TLS configuration variable
+	if certPath := os.Getenv("JOBS_DOCKER_CERT_PATH"); certPath != "" {
+		mounts = append(mounts, mount.Mount{
+			Target:   "/certs",
+			Source:   certPath,
+			Type:     "bind",
+			ReadOnly: true,
+		})
+	}
 
 	resp, err := s.client.ContainerCreate(ctx, &container.Config{
 		Image:   jb.Runner,
@@ -322,14 +341,8 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 		},
 	}, &container.HostConfig{
 		NetworkMode: networkMode,
-		Mounts: []mount.Mount{
-			{
-				Target: dockerVolumePath,
-				Source: volumeID,
-				Type:   "volume",
-			},
-		},
-		SecurityOpt: securityOpts,
+		Mounts:      mounts,
+		SecurityOpt: []string{dockerSecurityOpts},
 	}, nil, nil, "")
 	if err != nil {
 		return job.Job{}, fmt.Errorf("failed to create container: %w", err)
