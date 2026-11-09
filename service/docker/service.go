@@ -213,7 +213,7 @@ func (s *JobService) updateJobRunner(runner string) error {
 	// We check whether the runner (docker image) exists already. If not we try
 	// and pull it from the public registry. This outer check is especially useful
 	// when running things locally where there's no registry.
-	if _, _, err := s.client.ImageInspectWithRaw(ctx, runner); err != nil {
+	if _, err := s.client.ImageInspect(ctx, runner); err != nil {
 		// cancelling existing context as pulling the image may take a while.
 		cancel()
 
