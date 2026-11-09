@@ -90,7 +90,6 @@ func NewClient(cfg ClientConfig, opts ...ClientOption) (*Client, error) {
 	dialFn := (&net.Dialer{
 		Timeout:   5 * time.Second,
 		KeepAlive: 30 * time.Second,
-		DualStack: true,
 	}).DialContext
 
 	if c.dialFn != nil {

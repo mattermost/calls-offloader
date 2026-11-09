@@ -78,7 +78,7 @@ type JobAPIType string
 
 const (
 	JobAPITypeDocker     JobAPIType = "docker"
-	JobAPITypeKubernetes            = "kubernetes"
+	JobAPITypeKubernetes JobAPIType = "kubernetes"
 )
 
 // Alias is needed to implement custom unmarshaler.
