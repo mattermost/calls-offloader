@@ -42,6 +42,8 @@ jobs:
       - name: Start minikube
         id: minikube
         uses: medyagh/setup-minikube@latest
+        with:
+          container-runtime: docker
       - name: Build image
         run: |
           eval $(minikube -p minikube docker-env) && \

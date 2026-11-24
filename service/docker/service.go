@@ -17,9 +17,9 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -117,7 +117,7 @@ func (s *JobService) retentionJob() {
 			return
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), dockerRequestTimeout)
-			containers, err := s.client.ContainerList(ctx, types.ContainerListOptions{
+			containers, err := s.client.ContainerList(ctx, container.ListOptions{
 				All: true,
 				Filters: filters.NewArgs(filters.KeyValuePair{
 					Key:   "status",
@@ -213,14 +213,14 @@ func (s *JobService) updateJobRunner(runner string) error {
 	// We check whether the runner (docker image) exists already. If not we try
 	// and pull it from the public registry. This outer check is especially useful
 	// when running things locally where there's no registry.
-	if _, _, err := s.client.ImageInspectWithRaw(ctx, runner); err != nil {
+	if _, err := s.client.ImageInspect(ctx, runner); err != nil {
 		// cancelling existing context as pulling the image may take a while.
 		cancel()
 
 		imagePullCtx, cancel := context.WithTimeout(context.Background(), dockerImagePullTimeout)
 		defer cancel()
 		s.log.Debug("image is missing, will try to pull it from registry")
-		out, err := s.client.ImagePull(imagePullCtx, runner, types.ImagePullOptions{})
+		out, err := s.client.ImagePull(imagePullCtx, runner, image.PullOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to pull docker image: %w", err)
 		}
@@ -258,7 +258,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	// We fetch the list of running containers to check against it in order to
 	// ensure we don't exceed the configured MaxConcurrentJobs limit.
-	containers, err := s.client.ContainerList(ctx, types.ContainerListOptions{
+	containers, err := s.client.ContainerList(ctx, container.ListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "label",
 			Value: "app=mattermost-calls-offloader",
@@ -350,7 +350,7 @@ func (s *JobService) CreateJob(cfg job.Config, onStopCb job.StopCb) (job.Job, er
 
 	jb.ID = resp.ID[:12]
 
-	if err := s.client.ContainerStart(ctx, jb.ID, types.ContainerStartOptions{}); err != nil {
+	if err := s.client.ContainerStart(ctx, jb.ID, container.StartOptions{}); err != nil {
 		return job.Job{}, fmt.Errorf("failed to start container: %w", err)
 	}
 
@@ -423,7 +423,7 @@ func (s *JobService) stopJob(jobID string) error {
 }
 
 func (s *JobService) getJobLogs(ctx context.Context, jobID string, stdout, stderr io.Writer, follow bool) error {
-	rdr, err := s.client.ContainerLogs(ctx, jobID, types.ContainerLogsOptions{
+	rdr, err := s.client.ContainerLogs(ctx, jobID, container.LogsOptions{
 		ShowStderr: true,
 		ShowStdout: true,
 		Since:      time.Now().Add(-time.Hour).Format(time.RFC3339),
@@ -458,7 +458,7 @@ func (s *JobService) DeleteJob(jobID string) error {
 		return fmt.Errorf("failed to get container: %w", err)
 	}
 
-	if err := s.client.ContainerRemove(ctx, jobID, types.ContainerRemoveOptions{}); err != nil {
+	if err := s.client.ContainerRemove(ctx, jobID, container.RemoveOptions{}); err != nil {
 		return fmt.Errorf("failed to remove container: %w", err)
 	}
 
